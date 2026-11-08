@@ -1,6 +1,6 @@
 <!-- Ícones de traço simples usados nas telas. -->
 <script setup lang="ts">
-defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell'; size?: number }>()
+defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell' | 'back' | 'alert' | 'edit'; size?: number }>()
 </script>
 
 <template>
@@ -22,5 +22,10 @@ defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'c
     <path v-else-if="name === 'sparkle'" d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
     <path v-else-if="name === 'leaf'" d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15M5 19l7-7" />
     <path v-else-if="name === 'dumbbell'" d="M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12" />
+    <path v-else-if="name === 'back'" d="M15 18l-6-6 6-6" />
+    <template v-else-if="name === 'alert'">
+      <path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    </template>
+    <path v-else-if="name === 'edit'" d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
   </svg>
 </template>

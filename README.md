@@ -13,9 +13,15 @@ Stack: Nuxt 4 + Tailwind 4 + Supabase (Auth, Postgres com RLS). Hospedagem na Ve
 
 Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, `/nutri`, `/aluno`, `/conta`.
 
+## Fase 2: anamnese
+
+- O **aluno** responde a anamnese em `/aluno/anamnese`, em 6 passos: objetivo, corpo, rotina de treino, saúde, alimentação e dia a dia. O app salva a cada passo, então dá para parar e continuar depois. Depois de enviar, o aluno ainda pode revisar as respostas.
+- O **personal** e o **nutri** veem no painel quem já respondeu e abrem a ficha do aluno em `/alunos/[id]`, com peso, altura, IMC, objetivo, cuidados (dores, condições, remédios e restrições) e o resto das respostas.
+- Só veem a anamnese o próprio aluno, os profissionais com vínculo ativo com ele e o administrador da assessoria.
+
 ## Banco de dados
 
-O esquema está em `supabase/migrations/`. Para aplicar, abra o projeto no Supabase, vá em **SQL Editor**, cole o conteúdo do arquivo e clique em **Run**.
+O esquema está em `supabase/migrations/`. Para aplicar, abra o projeto no Supabase, vá em **SQL Editor**, cole o conteúdo de cada arquivo, na ordem, e clique em **Run**.
 
 ## Rodar no computador
 
