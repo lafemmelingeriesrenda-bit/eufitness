@@ -5,8 +5,12 @@ import type { Database } from '~/types/database.types'
 const supabase = useSupabaseClient<Database>()
 const { me, load, signOut } = useMe()
 
+const route = useRoute()
 await load()
-if (me.value?.current) await navigateTo(homeFor(me.value), { replace: true })
+// O dono da plataforma vai para /admin, a não ser que tenha pedido para criar uma assessoria.
+if (me.value?.current || (me.value?.isPlatformAdmin && route.query.criar !== '1')) {
+  await navigateTo(homeFor(me.value), { replace: true })
+}
 
 const orgName = ref('')
 const cref = ref('')

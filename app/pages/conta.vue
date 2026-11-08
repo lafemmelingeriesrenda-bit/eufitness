@@ -58,6 +58,12 @@ async function save() {
       <button class="btn-primary mt-2" type="submit" :disabled="saving">{{ saving ? 'Salvando…' : 'Salvar' }}</button>
     </form>
 
+    <NuxtLink v-if="me?.isPlatformAdmin" to="/admin" class="flex items-center gap-3 rounded-[20px] border border-violet-line bg-violet-deep p-4 text-sm">
+      <AppIcon name="shield" class="text-violet-soft" />
+      <span class="flex-1"><strong>Dono da plataforma</strong> · ver todas as assessorias</span>
+      <AppIcon name="arrow" :size="18" class="text-violet-soft" />
+    </NuxtLink>
+
     <div v-if="me?.current" class="rounded-[20px] bg-card p-4 text-sm text-muted">
       {{ roleLabel[me.current.role] }} na <strong class="text-text">{{ me.current.organization?.name }}</strong>
       <span v-if="me.current.is_admin"> · administrador</span>

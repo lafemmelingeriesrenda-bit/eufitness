@@ -7,6 +7,31 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type MemberRole = 'personal' | 'nutri' | 'aluno'
 export type LinkStatus = 'ativo' | 'pausado' | 'encerrado'
 
+/** O que o painel /admin recebe de admin_overview(). */
+export type AdminOverview = {
+  organizations: {
+    id: string
+    name: string
+    created_at: string
+    owner_name: string
+    owner_email: string
+    personais: number
+    nutris: number
+    alunos: number
+    anamneses_enviadas: number
+  }[]
+  users: {
+    id: string
+    full_name: string
+    email: string
+    phone: string | null
+    created_at: string | null
+    last_sign_in_at: string | null
+    confirmed: boolean
+    roles: { organization: string; role: MemberRole; is_admin: boolean }[]
+  }[]
+}
+
 /** Respostas da anamnese (fase 2). Tudo pode ficar vazio até o envio. */
 export type AnamneseAnswers = {
   goal: 'emagrecer' | 'massa' | 'condicionamento' | 'saude' | null
@@ -192,6 +217,14 @@ export type Database = {
       link_student: {
         Args: { org: string; professional: string; student: string }
         Returns: undefined
+      }
+      is_platform_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+      admin_overview: {
+        Args: Record<string, never>
+        Returns: AdminOverview
       }
     }
     Enums: {
