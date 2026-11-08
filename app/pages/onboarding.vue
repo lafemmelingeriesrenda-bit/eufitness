@@ -7,6 +7,7 @@ const { me, load, signOut } = useMe()
 
 const route = useRoute()
 await load()
+if (!me.value) await navigateTo('/login', { replace: true })
 // O dono da plataforma vai para /admin, a não ser que tenha pedido para criar uma assessoria.
 if (me.value?.current || (me.value?.isPlatformAdmin && route.query.criar !== '1')) {
   await navigateTo(homeFor(me.value), { replace: true })

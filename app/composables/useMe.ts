@@ -36,7 +36,9 @@ export function useMe() {
   const me = useState<Me | null>('me', () => null)
 
   async function load(force = false) {
-    const uid = user.value?.sub
+    // Logo depois de entrar ou confirmar o e-mail, useSupabaseUser pode ainda
+    // não ter sido preenchido. Nesse caso, pergunta a sessão direto ao Supabase.
+    const uid = user.value?.sub ?? (await supabase.auth.getClaims()).data?.claims?.sub
     if (!uid) {
       me.value = null
       return null
