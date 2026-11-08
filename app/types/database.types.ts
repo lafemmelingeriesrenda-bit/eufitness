@@ -7,6 +7,31 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type MemberRole = 'personal' | 'nutri' | 'aluno'
 export type LinkStatus = 'ativo' | 'pausado' | 'encerrado'
 
+/** Respostas da anamnese (fase 2). Tudo pode ficar vazio até o envio. */
+export type AnamneseAnswers = {
+  goal: 'emagrecer' | 'massa' | 'condicionamento' | 'saude' | null
+  goal_notes: string | null
+  sex: 'feminino' | 'masculino' | null
+  birth_date: string | null
+  height_cm: number | null
+  weight_kg: number | null
+  training_days: number | null
+  training_place: 'academia' | 'casa' | 'livre' | null
+  session_minutes: number | null
+  training_time: 'manha' | 'tarde' | 'noite' | 'variado' | null
+  experience: 'iniciante' | 'intermediario' | 'avancado' | null
+  pain: string | null
+  conditions: string | null
+  medications: string | null
+  diet_restrictions: string | null
+  food_dislikes: string | null
+  meals_per_day: number | null
+  water_liters: number | null
+  activity_level: 'sedentario' | 'leve' | 'moderado' | 'intenso' | null
+  sleep_hours: number | null
+  notes: string | null
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -114,6 +139,34 @@ export type Database = {
         }
         Update: never
         Relationships: []
+      }
+      anamneses: {
+        Row: AnamneseAnswers & {
+          student_id: string
+          organization_id: string
+          step: number
+          submitted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Partial<AnamneseAnswers> & {
+          student_id: string
+          organization_id: string
+          step?: number
+        }
+        Update: Partial<AnamneseAnswers> & {
+          step?: number
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'anamneses_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: { [_ in never]: never }

@@ -28,6 +28,17 @@ const { data: team } = await useAsyncData('aluno-equipe', async () => {
   })
 })
 
+const { data: anamnese } = await useAsyncData('aluno-anamnese-status', async () => {
+  const { data } = await supabase
+    .from('anamneses')
+    .select('step, submitted_at')
+    .eq('student_id', user.value!.sub)
+    .maybeSingle()
+  return data
+})
+const route = useRoute()
+const justSent = computed(() => route.query.anamnese === 'enviada')
+
 const firstName = computed(() => me.value?.profile.full_name.split(' ')[0] || '')
 const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 </script>
@@ -50,11 +61,23 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
         <circle cx="60" cy="60" r="30" fill="none" stroke="#1A1E24" stroke-width="14" />
         <circle cx="60" cy="60" r="30" fill="none" stroke="#FF8A3D" stroke-width="14" stroke-linecap="round" stroke-dasharray="188" stroke-dashoffset="150" transform="rotate(-90 60 60)" />
       </svg>
-      <div class="flex flex-col gap-1.5">
-        <p class="font-display text-lg leading-snug font-semibold">Seu plano está sendo preparado</p>
-        <p class="text-sm text-muted">Logo você responde a anamnese e seus profissionais montam treino e dieta para você.</p>
+      <div v-if="anamnese?.submitted_at" class="flex flex-col gap-1.5">
+        <p class="font-display text-lg leading-snug font-semibold">{{ justSent ? 'Anamnese enviada!' : 'Seu plano está sendo preparado' }}</p>
+        <p class="text-sm text-muted">Seus profissionais já podem ver suas respostas e montar treino e dieta para você.</p>
+      </div>
+      <div v-else class="flex flex-col gap-1.5">
+        <p class="font-display text-lg leading-snug font-semibold">Comece pela anamnese</p>
+        <p class="text-sm text-muted">São 6 passos rápidos. Com eles seus profissionais montam treino e dieta para você.</p>
       </div>
     </section>
+
+    <NuxtLink v-if="!anamnese?.submitted_at" to="/aluno/anamnese" class="btn-primary">
+      {{ anamnese && anamnese.step > 1 ? `Continuar do passo ${anamnese.step}` : 'Responder anamnese' }}
+      <AppIcon name="arrow" />
+    </NuxtLink>
+    <NuxtLink v-else to="/aluno/anamnese" class="btn-ghost self-start">
+      <AppIcon name="edit" :size="16" /> Revisar minhas respostas
+    </NuxtLink>
 
     <section class="flex flex-col gap-3">
       <h2 class="font-display text-lg font-semibold">Sua equipe</h2>

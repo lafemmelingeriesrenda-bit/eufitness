@@ -12,7 +12,7 @@ const showInvite = ref(false)
 const linkError = ref('')
 
 const { data, refresh } = await useAsyncData('painel-personal', async () => {
-  const [members, links, invites] = await Promise.all([
+  const [members, links, invites, anamneses] = await Promise.all([
     supabase
       .from('memberships')
       .select('user_id, role, registry, created_at, profile:profiles(full_name, phone)')
@@ -26,11 +26,13 @@ const { data, refresh } = await useAsyncData('painel-personal', async () => {
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false }),
+    supabase.from('anamneses').select('student_id, step, submitted_at').eq('organization_id', orgId.value),
   ])
   return {
     members: members.data ?? [],
     links: links.data ?? [],
     invites: invites.data ?? [],
+    anamneses: anamneses.data ?? [],
   }
 })
 
@@ -61,6 +63,13 @@ async function cancelInvite(id: string) {
 }
 
 const firstName = (name: string) => name.split(' ')[0]
+
+function anamneseTag(studentId: string) {
+  const a = data.value?.anamneses.find((x) => x.student_id === studentId)
+  if (a?.submitted_at) return { text: 'Anamnese ok', cls: 'bg-[rgba(198,244,50,0.14)] text-lime' }
+  if (a) return { text: `Anamnese ${a.step}/6`, cls: 'bg-[rgba(255,138,61,0.16)] text-[#FFB98A]' }
+  return { text: 'Sem anamnese', cls: 'bg-raised text-muted' }
+}
 </script>
 
 <template>
@@ -106,7 +115,7 @@ const firstName = (name: string) => name.split(' ')[0]
       </div>
 
       <div v-for="s in students" :key="s.user_id" class="flex flex-col gap-3 rounded-[20px] bg-card px-3.5 py-3">
-        <div class="flex items-center gap-3.5">
+        <NuxtLink :to="`/alunos/${s.user_id}`" class="flex items-center gap-3.5">
           <AppAvatar :name="s.profile?.full_name ?? ''" :size="42" color="#FF8A3D" />
           <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <span class="truncate text-[15px] font-semibold">{{ s.profile?.full_name || 'Sem nome' }}</span>
@@ -114,8 +123,8 @@ const firstName = (name: string) => name.split(' ')[0]
               {{ linksOf(s.user_id).map((l) => firstName(nameOf(l.professional_id))).join(' + ') || 'Sem profissional' }}
             </span>
           </div>
-          <span class="rounded-full bg-raised px-2.5 py-1 text-xs font-semibold text-muted">Sem plano</span>
-        </div>
+          <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="anamneseTag(s.user_id).cls">{{ anamneseTag(s.user_id).text }}</span>
+        </NuxtLink>
         <div v-if="isAdmin && missingNutris(s.user_id).length" class="flex flex-wrap gap-2">
           <button
             v-for="n in missingNutris(s.user_id)"

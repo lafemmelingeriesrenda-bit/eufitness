@@ -11,12 +11,16 @@ const orgId = computed(() => me.value!.current!.organization_id)
 const showInvite = ref(false)
 
 const { data: students, refresh } = await useAsyncData('painel-nutri', async () => {
-  const { data } = await supabase
-    .from('coach_students')
-    .select('student_id, status, since, student:profiles!coach_students_student_id_fkey(full_name)')
-    .eq('professional_id', user.value!.sub)
-    .order('since', { ascending: false })
-  return data ?? []
+  const [{ data }, { data: anamneses }] = await Promise.all([
+    supabase
+      .from('coach_students')
+      .select('student_id, status, since, student:profiles!coach_students_student_id_fkey(full_name)')
+      .eq('professional_id', user.value!.sub)
+      .order('since', { ascending: false }),
+    supabase.from('anamneses').select('student_id, submitted_at').eq('organization_id', orgId.value),
+  ])
+  const sent = new Set((anamneses ?? []).filter((a) => a.submitted_at).map((a) => a.student_id))
+  return (data ?? []).map((s) => ({ ...s, hasAnamnese: sent.has(s.student_id) }))
 })
 
 const active = computed(() => (students.value ?? []).filter((s) => s.status === 'ativo'))
@@ -58,14 +62,17 @@ const active = computed(() => (students.value ?? []).filter((s) => s.status === 
         <p class="text-sm text-muted">O personal vincula você aos alunos dele, ou você convida um aluno direto.</p>
       </div>
 
-      <div v-for="s in active" :key="s.student_id" class="flex items-center gap-3.5 rounded-[20px] bg-card px-3.5 py-3">
+      <NuxtLink v-for="s in active" :key="s.student_id" :to="`/alunos/${s.student_id}`" class="flex items-center gap-3.5 rounded-[20px] bg-card px-3.5 py-3">
         <AppAvatar :name="s.student?.full_name ?? ''" :size="42" color="#FF8A3D" />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <span class="truncate text-[15px] font-semibold">{{ s.student?.full_name || 'Sem nome' }}</span>
           <span class="text-[13px] text-muted">Desde {{ new Date(`${s.since}T12:00`).toLocaleDateString('pt-BR') }}</span>
         </div>
-        <span class="rounded-full bg-raised px-2.5 py-1 text-xs font-semibold text-muted">Sem dieta</span>
-      </div>
+        <span
+          class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+          :class="s.hasAnamnese ? 'bg-[rgba(198,244,50,0.14)] text-lime' : 'bg-raised text-muted'"
+        >{{ s.hasAnamnese ? 'Anamnese ok' : 'Sem anamnese' }}</span>
+      </NuxtLink>
     </section>
 
     <InviteSheet
