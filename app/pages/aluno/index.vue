@@ -36,6 +36,11 @@ const { data: anamnese } = await useAsyncData('aluno-anamnese-status', async () 
     .maybeSingle()
   return data
 })
+const { data: plans } = await useAsyncData('aluno-planos', async () => {
+  const { data } = await supabase.rpc('my_plans')
+  return data ?? []
+})
+const hasPlan = (k: PlanKind) => (plans.value ?? []).some((p) => p.kind === k)
 const route = useRoute()
 const justSent = computed(() => route.query.anamnese === 'enviada')
 
@@ -61,8 +66,12 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
         <circle cx="60" cy="60" r="30" fill="none" stroke="#1A1E24" stroke-width="14" />
         <circle cx="60" cy="60" r="30" fill="none" stroke="#FF8A3D" stroke-width="14" stroke-linecap="round" stroke-dasharray="188" stroke-dashoffset="150" transform="rotate(-90 60 60)" />
       </svg>
-      <div v-if="anamnese?.submitted_at" class="flex flex-col gap-1.5">
-        <p class="font-display text-lg leading-snug font-semibold">{{ justSent ? 'Anamnese enviada!' : 'Seu plano está sendo preparado' }}</p>
+      <div v-if="hasPlan('treino') && hasPlan('dieta')" class="flex flex-col gap-1.5">
+        <p class="font-display text-lg leading-snug font-semibold">Seu plano está pronto</p>
+        <p class="text-sm text-muted">Treino e dieta aprovados pela sua equipe. É só seguir.</p>
+      </div>
+      <div v-else-if="anamnese?.submitted_at" class="flex flex-col gap-1.5">
+        <p class="font-display text-lg leading-snug font-semibold">{{ justSent ? 'Anamnese enviada!' : hasPlan('treino') || hasPlan('dieta') ? 'Parte do seu plano chegou' : 'Seu plano está sendo preparado' }}</p>
         <p class="text-sm text-muted">Seus profissionais já podem ver suas respostas e montar treino e dieta para você.</p>
       </div>
       <div v-else class="flex flex-col gap-1.5">
@@ -75,7 +84,25 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       {{ anamnese && anamnese.step > 1 ? `Continuar do passo ${anamnese.step}` : 'Responder anamnese' }}
       <AppIcon name="arrow" />
     </NuxtLink>
-    <NuxtLink v-else to="/aluno/anamnese" class="btn-ghost self-start">
+    <section v-else class="grid grid-cols-2 gap-2.5">
+      <NuxtLink
+        v-for="k in (['treino', 'dieta'] as const)"
+        :key="k"
+        :to="`/aluno/plano/${k}`"
+        class="flex flex-col gap-3 rounded-[22px] p-4"
+        :class="hasPlan(k) ? 'bg-card' : 'border border-dashed border-line'"
+      >
+        <span class="flex size-[42px] items-center justify-center rounded-[14px] bg-raised" :class="k === 'treino' ? 'text-lime' : 'text-violet-soft'">
+          <AppIcon :name="k === 'treino' ? 'dumbbell' : 'leaf'" />
+        </span>
+        <span class="flex flex-col gap-0.5">
+          <span class="text-[15px] font-semibold">{{ k === 'treino' ? 'Seu treino' : 'Sua dieta' }}</span>
+          <span class="text-[13px] text-muted">{{ hasPlan(k) ? 'Abrir' : 'Em preparo' }}</span>
+        </span>
+      </NuxtLink>
+    </section>
+
+    <NuxtLink v-if="anamnese?.submitted_at" to="/aluno/anamnese" class="btn-ghost self-start">
       <AppIcon name="edit" :size="16" /> Revisar minhas respostas
     </NuxtLink>
 

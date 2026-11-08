@@ -11,19 +11,25 @@ const orgId = computed(() => me.value!.current!.organization_id)
 const showInvite = ref(false)
 
 const { data: students, refresh } = await useAsyncData('painel-nutri', async () => {
-  const [{ data }, { data: anamneses }] = await Promise.all([
+  const [{ data }, { data: anamneses }, { data: dietas }] = await Promise.all([
     supabase
       .from('coach_students')
       .select('student_id, status, since, student:profiles!coach_students_student_id_fkey(full_name)')
       .eq('professional_id', user.value!.sub)
       .order('since', { ascending: false }),
     supabase.from('anamneses').select('student_id, submitted_at').eq('organization_id', orgId.value),
+    supabase.from('plans').select('student_id, draft_updated_at, published_at').eq('organization_id', orgId.value).eq('kind', 'dieta'),
   ])
   const sent = new Set((anamneses ?? []).filter((a) => a.submitted_at).map((a) => a.student_id))
-  return (data ?? []).map((s) => ({ ...s, hasAnamnese: sent.has(s.student_id) }))
+  // Dieta com rascunho que ainda não foi aprovado (ou foi alterado depois de aprovado).
+  const toReview = new Set((dietas ?? [])
+    .filter((p) => p.draft_updated_at && (!p.published_at || p.draft_updated_at > p.published_at))
+    .map((p) => p.student_id))
+  return (data ?? []).map((s) => ({ ...s, hasAnamnese: sent.has(s.student_id), dietToReview: toReview.has(s.student_id) }))
 })
 
 const active = computed(() => (students.value ?? []).filter((s) => s.status === 'ativo'))
+const toReviewCount = computed(() => active.value.filter((s) => s.dietToReview).length)
 </script>
 
 <template>
@@ -36,7 +42,7 @@ const active = computed(() => (students.value ?? []).filter((s) => s.status === 
         <span class="text-xs text-muted">Alunos ativos</span>
       </div>
       <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
-        <span class="font-display text-[26px] font-bold text-orange">0</span>
+        <span class="font-display text-[26px] font-bold text-orange">{{ toReviewCount }}</span>
         <span class="text-xs text-muted">Dietas para revisar</span>
       </div>
     </section>
@@ -45,7 +51,7 @@ const active = computed(() => (students.value ?? []).filter((s) => s.status === 
       <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
         <AppIcon name="leaf" :size="16" /> Dietas
       </span>
-      <p class="font-display text-xl leading-tight font-semibold">As dietas que o agente montar chegam aqui para você aprovar</p>
+      <p class="font-display text-xl leading-tight font-semibold">Abra um aluno e toque em Dieta para o agente montar o rascunho</p>
       <p class="text-sm text-muted">Nada vai para o aluno sem a sua assinatura.</p>
     </section>
 

@@ -19,6 +19,13 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 - O **personal** e o **nutri** veem no painel quem já respondeu e abrem a ficha do aluno em `/alunos/[id]`, com peso, altura, IMC, objetivo, cuidados (dores, condições, remédios e restrições) e o resto das respostas.
 - Só veem a anamnese o próprio aluno, os profissionais com vínculo ativo com ele e o administrador da assessoria.
 
+## Fase 3: treino e dieta com o agente
+
+- Na ficha do aluno, **Treino** e **Dieta** abrem a tela de revisão. O botão **Gerar rascunho** chama `/api/planos/gerar`, que manda a anamnese (sem nome nem contatos) ao Claude (`claude-opus-5-5`) e recebe o plano no formato de `shared/utils/planos.ts`.
+- O personal edita e aprova o **treino**; a nutri edita e aprova a **dieta**. O outro profissional só lê. O agente também deixa avisos "Confira antes de aprovar", que o aluno não vê.
+- Aprovar copia o rascunho para a versão publicada. O aluno vê só essa versão, em `/aluno/plano/treino` e `/aluno/plano/dieta`; editar depois não muda nada para ele até aprovar de novo.
+- **Configuração:** na Vercel, em Settings → Environment Variables, crie `ANTHROPIC_API_KEY` com uma chave de https://console.anthropic.com e faça um novo deploy. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
+
 ## Dono da plataforma
 
 - Quem está na tabela `platform_admins` (por e-mail) vê o painel `/admin` com todas as assessorias e pessoas. Por enquanto é só leitura.

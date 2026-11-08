@@ -1,4 +1,4 @@
-import type { AnamneseAnswers } from '~/types/database.types'
+import type { AnamneseAnswers } from '~~/app/types/database.types'
 
 type Options<K extends keyof AnamneseAnswers> = { value: NonNullable<AnamneseAnswers[K]>; label: string; hint?: string }[]
 
