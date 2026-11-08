@@ -1,6 +1,6 @@
 <!-- Ícones de traço simples usados nas telas. -->
 <script setup lang="ts">
-defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell' | 'back' | 'alert' | 'edit'; size?: number }>()
+defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell' | 'back' | 'alert' | 'edit' | 'shield'; size?: number }>()
 </script>
 
 <template>
@@ -27,5 +27,6 @@ defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'c
       <path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
     </template>
     <path v-else-if="name === 'edit'" d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
+    <path v-else-if="name === 'shield'" d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3zM9 12l2 2 4-4" />
   </svg>
 </template>

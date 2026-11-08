@@ -19,6 +19,12 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 - O **personal** e o **nutri** veem no painel quem já respondeu e abrem a ficha do aluno em `/alunos/[id]`, com peso, altura, IMC, objetivo, cuidados (dores, condições, remédios e restrições) e o resto das respostas.
 - Só veem a anamnese o próprio aluno, os profissionais com vínculo ativo com ele e o administrador da assessoria.
 
+## Dono da plataforma
+
+- Quem está na tabela `platform_admins` (por e-mail) vê o painel `/admin` com todas as assessorias e pessoas. Por enquanto é só leitura.
+- O e-mail precisa estar confirmado. Quem não tem assessoria cai direto em `/admin` ao entrar; quem também é personal vê um atalho com escudo no topo do painel.
+- Para incluir outra pessoa, rode no SQL Editor: `insert into public.platform_admins (email) values ('email@exemplo.com');`
+
 ## Banco de dados
 
 O esquema está em `supabase/migrations/`. Para aplicar, abra o projeto no Supabase, vá em **SQL Editor**, cole o conteúdo de cada arquivo, na ordem, e clique em **Run**.

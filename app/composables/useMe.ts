@@ -10,6 +10,8 @@ export type Me = {
   memberships: Membership[]
   /** Assessoria em uso. Na fase 1 cada pessoa fica em uma só. */
   current: Membership | null
+  /** Dono da plataforma: vê todas as assessorias em /admin. */
+  isPlatformAdmin: boolean
 }
 
 // Ordem de preferência quando a pessoa tem mais de um papel.
@@ -41,15 +43,16 @@ export function useMe() {
     }
     if (me.value && me.value.profile.id === uid && !force) return me.value
 
-    const [{ data: profile, error: profileError }, { data: memberships, error: membershipsError }] = await Promise.all([
+    const [{ data: profile, error: profileError }, { data: memberships, error: membershipsError }, { data: isPlatformAdmin }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('memberships').select('*, organization:organizations(id, name)').eq('user_id', uid),
+      supabase.rpc('is_platform_admin'),
     ])
     if (profileError) throw profileError
     if (membershipsError) throw membershipsError
 
     const sorted = [...(memberships ?? [])].sort((a, b) => rolePriority[a.role] - rolePriority[b.role])
-    me.value = { profile, memberships: sorted, current: sorted[0] ?? null }
+    me.value = { profile, memberships: sorted, current: sorted[0] ?? null, isPlatformAdmin: isPlatformAdmin === true }
     return me.value
   }
 
@@ -64,6 +67,6 @@ export function useMe() {
 
 /** Para onde mandar a pessoa logo depois do login. */
 export function homeFor(me: Me | null) {
-  if (!me?.current) return '/onboarding'
+  if (!me?.current) return me?.isPlatformAdmin ? '/admin' : '/onboarding'
   return roleHome[me.current.role]
 }
