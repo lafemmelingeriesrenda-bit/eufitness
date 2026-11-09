@@ -24,6 +24,10 @@ export default defineNuxtConfig({
       ],
     },
   },
+  nitro: {
+    // O agente pode levar até uns 2 minutos para montar um plano.
+    vercel: { functions: { maxDuration: 300 } },
+  },
   supabase: {
     // URL e chave vêm de NUXT_PUBLIC_SUPABASE_URL e NUXT_PUBLIC_SUPABASE_KEY (.env ou Vercel)
     redirectOptions: {

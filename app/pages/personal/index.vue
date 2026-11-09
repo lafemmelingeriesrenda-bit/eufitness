@@ -95,8 +95,8 @@ function anamneseTag(studentId: string) {
       <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
         <AppIcon name="sparkle" :size="16" /> Agente
       </span>
-      <p class="font-display text-xl leading-tight font-semibold">Em breve o agente monta treino e dieta a partir da anamnese</p>
-      <p class="text-sm text-muted">Você revisa o treino, o nutricionista revisa a dieta, e só então o aluno recebe.</p>
+      <p class="font-display text-xl leading-tight font-semibold">O agente monta treino e dieta a partir da anamnese</p>
+      <p class="text-sm text-muted">Abra um aluno, toque em Treino e gere o rascunho. Você revisa o treino, o nutricionista revisa a dieta, e só então o aluno recebe.</p>
     </section>
 
     <section class="flex flex-col gap-3">

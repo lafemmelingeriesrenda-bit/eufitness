@@ -6,6 +6,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type MemberRole = 'personal' | 'nutri' | 'aluno'
 export type LinkStatus = 'ativo' | 'pausado' | 'encerrado'
+export type PlanKindDb = 'treino' | 'dieta'
 
 /** O que o painel /admin recebe de admin_overview(). */
 export type AdminOverview = {
@@ -165,6 +166,52 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      plans: {
+        Row: {
+          student_id: string
+          kind: PlanKindDb
+          organization_id: string
+          draft: Json | null
+          draft_by_agent: boolean
+          draft_updated_at: string | null
+          draft_updated_by: string | null
+          published: Json | null
+          published_at: string | null
+          published_by: string | null
+          created_at: string
+        }
+        Insert: {
+          student_id: string
+          kind: PlanKindDb
+          organization_id: string
+          draft?: Json | null
+          draft_by_agent?: boolean
+          draft_updated_at?: string | null
+          draft_updated_by?: string | null
+        }
+        Update: {
+          draft?: Json | null
+          draft_by_agent?: boolean
+          draft_updated_at?: string | null
+          draft_updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plans_draft_updated_by_fkey'
+            columns: ['draft_updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plans_published_by_fkey'
+            columns: ['published_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       anamneses: {
         Row: AnamneseAnswers & {
           student_id: string
@@ -218,6 +265,18 @@ export type Database = {
         Args: { org: string; professional: string; student: string }
         Returns: undefined
       }
+      can_manage_plan: {
+        Args: { org: string; student: string; k: PlanKindDb }
+        Returns: boolean
+      }
+      approve_plan: {
+        Args: { student: string; k: PlanKindDb }
+        Returns: string
+      }
+      my_plans: {
+        Args: Record<string, never>
+        Returns: { kind: PlanKindDb; content: Json; published_at: string; published_by_name: string | null }[]
+      }
       is_platform_admin: {
         Args: Record<string, never>
         Returns: boolean
@@ -230,6 +289,7 @@ export type Database = {
     Enums: {
       member_role: MemberRole
       link_status: LinkStatus
+      plan_kind: PlanKindDb
     }
     CompositeTypes: { [_ in never]: never }
   }

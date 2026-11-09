@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AnamneseAnswers, Database } from '~/types/database.types'
-import { anamneseSteps } from '~/utils/anamnese'
+import { anamneseSteps } from '~~/shared/utils/anamnese'
 
 // Anamnese em 6 passos. Salva a cada passo, então o aluno pode parar e
 // continuar depois de onde estava.

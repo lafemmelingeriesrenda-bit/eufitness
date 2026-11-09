@@ -12,14 +12,25 @@ const studentId = route.params.id as string
 const home = computed(() => homeFor(me.value))
 
 const { data } = await useAsyncData(`ficha-${studentId}`, async () => {
-  const [profile, anamnese] = await Promise.all([
+  const [profile, anamnese, plans] = await Promise.all([
     supabase.from('profiles').select('full_name, phone').eq('id', studentId).maybeSingle(),
     supabase.from('anamneses').select('*').eq('student_id', studentId).maybeSingle(),
+    supabase.from('plans').select('kind, draft_by_agent, draft_updated_at, published_at').eq('student_id', studentId),
   ])
-  return { profile: profile.data, anamnese: anamnese.data }
+  return { profile: profile.data, anamnese: anamnese.data, plans: plans.data ?? [] }
 })
 
 const a = computed(() => data.value?.anamnese ?? null)
+
+/** Situação de cada plano para o card: sem plano, rascunho para revisar ou publicado. */
+function planStatus(kind: PlanKind) {
+  const p = data.value?.plans.find((x) => x.kind === kind)
+  if (!p?.draft_updated_at) return { text: 'Sem plano', cls: 'bg-raised text-muted' }
+  const pending = !p.published_at || p.draft_updated_at > p.published_at
+  if (!p.published_at) return { text: p.draft_by_agent ? 'Rascunho do agente' : 'Rascunho', cls: 'bg-[rgba(255,138,61,0.16)] text-[#FFB98A]' }
+  if (pending) return { text: 'Alterações não enviadas', cls: 'bg-[rgba(255,138,61,0.16)] text-[#FFB98A]' }
+  return { text: `Enviado em ${new Date(p.published_at).toLocaleDateString('pt-BR')}`, cls: 'bg-[rgba(198,244,50,0.14)] text-lime' }
+}
 const age = computed(() => ageFrom(a.value?.birth_date ?? null))
 const bmi = computed(() => {
   if (!a.value?.height_cm || !a.value?.weight_kg) return null
@@ -123,6 +134,25 @@ const sections = computed(() => {
           <span class="font-display text-xl font-bold text-lime">{{ bmi ?? '—' }}</span>
           <span class="text-xs text-muted">IMC</span>
         </div>
+      </section>
+
+      <section class="flex flex-col gap-2.5">
+        <h2 class="font-display text-lg font-semibold">Planos</h2>
+        <NuxtLink
+          v-for="k in (['treino', 'dieta'] as const)"
+          :key="k"
+          :to="`/alunos/${studentId}/${k}`"
+          class="flex items-center gap-3.5 rounded-[20px] border border-violet-line bg-violet-deep px-3.5 py-3"
+        >
+          <span class="flex size-[42px] shrink-0 items-center justify-center rounded-[14px] bg-raised" :class="k === 'treino' ? 'text-lime' : 'text-violet-soft'">
+            <AppIcon :name="k === 'treino' ? 'dumbbell' : 'leaf'" />
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="text-[15px] font-semibold">{{ planLabel[k] }}</span>
+            <span class="text-[13px] text-muted">{{ k === 'treino' ? 'Montado pelo agente, aprovado pelo personal' : 'Montada pelo agente, aprovada pela nutri' }}</span>
+          </span>
+          <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="planStatus(k).cls">{{ planStatus(k).text }}</span>
+        </NuxtLink>
       </section>
 
       <section class="flex flex-col gap-3 rounded-[22px] bg-card p-4">
