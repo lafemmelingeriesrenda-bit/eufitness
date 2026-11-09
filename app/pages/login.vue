@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const { continueAfterLogin } = useNextStep()
@@ -46,8 +47,8 @@ async function resetPassword() {
 
 <template>
   <div class="relative flex min-h-dvh flex-col overflow-hidden">
-    <AppRings />
-    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[210px] pb-7">
+    <AppRings class="lg:hidden" />
+    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[210px] pb-7 lg:pt-12">
       <div class="flex flex-col gap-3.5">
         <span class="chip">Eu Fitness</span>
         <h1 class="font-display text-[38px] leading-[1.05] font-bold tracking-tight">

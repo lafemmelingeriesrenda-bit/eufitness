@@ -36,12 +36,12 @@ const suggested = computed(() => {
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:max-w-4xl lg:px-0">
     <div class="flex items-center gap-3">
-      <NuxtLink to="/aluno" aria-label="Voltar" class="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-card">
+      <NuxtLink to="/aluno" aria-label="Voltar" class="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-card lg:hidden">
         <AppIcon name="back" :size="22" />
       </NuxtLink>
-      <h1 class="font-display text-xl font-semibold">{{ kind === 'treino' ? 'Seu treino' : 'Sua dieta' }}</h1>
+      <h1 class="font-display text-xl font-semibold lg:text-[32px] lg:font-bold lg:tracking-tight">{{ kind === 'treino' ? 'Seu treino' : 'Sua dieta' }}</h1>
     </div>
 
     <template v-if="plan">

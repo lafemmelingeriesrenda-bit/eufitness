@@ -104,7 +104,7 @@ const sections = computed(() => {
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:px-0">
     <div class="flex items-center gap-3">
       <NuxtLink :to="home" aria-label="Voltar" class="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-card">
         <AppIcon name="back" :size="22" />
@@ -136,7 +136,8 @@ const sections = computed(() => {
       </p>
     </div>
 
-    <template v-else>
+    <div v-else class="flex flex-col gap-[22px] lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+      <div class="flex flex-col gap-[22px]">
       <section class="grid grid-cols-3 gap-2.5">
         <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
           <span class="font-display text-xl font-bold">{{ fmt(a.weight_kg, 'kg') }}</span>
@@ -200,6 +201,8 @@ const sections = computed(() => {
         </div>
       </section>
 
+      </div>
+      <div class="flex flex-col gap-[22px]">
       <section v-for="s in sections" :key="s.title" class="flex flex-col gap-2">
         <h2 class="font-display text-lg font-semibold">{{ s.title }}</h2>
         <dl class="flex flex-col divide-y divide-line rounded-[20px] bg-card px-4">
@@ -216,6 +219,7 @@ const sections = computed(() => {
           · atualizada em {{ new Date(a.updated_at).toLocaleDateString('pt-BR') }}
         </template>
       </p>
-    </template>
+      </div>
+    </div>
   </main>
 </template>

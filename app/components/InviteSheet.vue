@@ -55,8 +55,8 @@ async function copy() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-20 flex items-end justify-center bg-black/60" @click.self="emit('close')">
-    <div class="flex w-full max-w-[480px] flex-col gap-4 rounded-t-[28px] border-t border-line bg-raised px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" role="dialog" aria-label="Convidar">
+  <div class="fixed inset-0 z-20 flex items-end justify-center bg-black/60 md:items-center md:p-6" @click.self="emit('close')">
+    <div class="flex w-full max-w-[480px] flex-col gap-4 rounded-t-[28px] border-t border-line bg-raised px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:rounded-[28px] md:border md:p-6" role="dialog" aria-label="Convidar">
       <div class="flex items-center justify-between">
         <h2 class="font-display text-lg font-semibold">Convidar</h2>
         <button type="button" class="text-sm text-muted" @click="emit('close')">Fechar</button>

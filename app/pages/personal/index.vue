@@ -73,10 +73,11 @@ function anamneseTag(studentId: string) {
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-6 lg:px-0">
     <AppHeader />
+    <PageTitle class="lg:col-span-2" :kicker="me?.current?.organization?.name" title="Painel" />
 
-    <section class="grid grid-cols-3 gap-2.5">
+    <section class="grid grid-cols-3 gap-2.5 lg:col-span-2 lg:gap-4">
       <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
         <span class="font-display text-[26px] font-bold">{{ activeStudents }}</span>
         <span class="text-xs text-muted">Alunos ativos</span>
@@ -91,7 +92,7 @@ function anamneseTag(studentId: string) {
       </div>
     </section>
 
-    <section class="flex flex-col gap-4 rounded-[26px] border border-violet-line bg-violet-deep p-5">
+    <section class="flex flex-col gap-4 rounded-[26px] border border-violet-line bg-violet-deep p-5 lg:col-start-2 lg:row-start-3">
       <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
         <AppIcon name="sparkle" :size="16" /> Agente
       </span>
@@ -99,7 +100,7 @@ function anamneseTag(studentId: string) {
       <p class="text-sm text-muted">Abra um aluno, toque em Treino e gere o rascunho. Você revisa o treino, o nutricionista revisa a dieta, e só então o aluno recebe.</p>
     </section>
 
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-3 lg:col-start-1 lg:row-span-3 lg:row-start-3">
       <div class="flex items-center justify-between">
         <h2 class="font-display text-lg font-semibold">Alunos</h2>
         <button type="button" class="btn-ghost" @click="showInvite = true">
@@ -139,7 +140,7 @@ function anamneseTag(studentId: string) {
       </div>
     </section>
 
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-3 lg:col-start-2 lg:row-start-4">
       <h2 class="font-display text-lg font-semibold">Equipe</h2>
       <div v-for="n in nutris" :key="n.user_id" class="flex items-center gap-3.5 rounded-[20px] bg-card px-3.5 py-3">
         <AppAvatar :name="n.profile?.full_name ?? ''" :size="42" color="#8B7CFF" />
@@ -153,7 +154,7 @@ function anamneseTag(studentId: string) {
       </p>
     </section>
 
-    <section v-if="data?.invites.length" class="flex flex-col gap-3">
+    <section v-if="data?.invites.length" class="flex flex-col gap-3 lg:col-start-2 lg:row-start-5">
       <h2 class="font-display text-lg font-semibold">Convites abertos</h2>
       <div v-for="i in data.invites" :key="i.id" class="flex items-center gap-3 rounded-[20px] border border-line px-3.5 py-3">
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">

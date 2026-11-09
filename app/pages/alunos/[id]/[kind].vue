@@ -140,7 +140,7 @@ const readOnlyContent = computed(() => (data.value?.plan?.published ?? data.valu
 
 <template>
   <div class="flex min-h-dvh flex-col">
-    <main class="flex flex-1 flex-col gap-[22px] px-5 pt-6 pb-6">
+    <main class="flex flex-1 flex-col gap-[22px] px-5 pt-6 pb-6 lg:mx-auto lg:w-full lg:max-w-[880px] lg:px-0">
       <div class="flex items-center gap-3">
         <NuxtLink :to="`/alunos/${studentId}`" aria-label="Voltar para a ficha" class="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-card">
           <AppIcon name="back" :size="22" />
@@ -228,7 +228,7 @@ const readOnlyContent = computed(() => (data.value?.plan?.published ?? data.valu
       </template>
     </main>
 
-    <footer v-if="data?.canManage && draft && !generating" class="sticky bottom-0 flex flex-col gap-2 border-t border-line bg-ink px-5 pt-3 pb-[max(20px,env(safe-area-inset-bottom))]">
+    <footer v-if="data?.canManage && draft && !generating" class="sticky bottom-0 flex flex-col gap-2 border-t border-line bg-ink px-5 pt-3 pb-[max(20px,env(safe-area-inset-bottom))] lg:mx-auto lg:w-full lg:max-w-[880px] lg:px-0">
       <p v-if="error" class="text-sm text-danger" role="alert">{{ error }}</p>
       <p v-if="notice" class="text-sm text-lime" role="status">{{ notice }}</p>
       <div class="grid grid-cols-[auto_1fr] gap-2">

@@ -4,7 +4,7 @@ import type { Database, Json } from '~/types/database.types'
 // Treino em andamento: um exercício por vez, marca as séries, ajusta carga e
 // repetições, e o descanso começa sozinho. Salva enquanto o aluno treina,
 // então dá para fechar o app e voltar de onde parou.
-definePageMeta({ roles: ['aluno'], middleware: 'role' })
+definePageMeta({ roles: ['aluno'], middleware: 'role', layout: 'focus' })
 
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()

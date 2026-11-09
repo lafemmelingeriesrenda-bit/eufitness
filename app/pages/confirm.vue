@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
 // Volta do link de e-mail (confirmação de cadastro ou nova senha).
 const user = useSupabaseUser()
 const { continueAfterLogin } = useNextStep()

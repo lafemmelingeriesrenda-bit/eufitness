@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
 import type { Database } from '~/types/database.types'
 
 // Primeiro acesso do personal: cria a assessoria e vira administrador.
@@ -37,8 +38,8 @@ async function create() {
 
 <template>
   <div class="relative flex min-h-dvh flex-col overflow-hidden">
-    <AppRings />
-    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7">
+    <AppRings class="lg:hidden" />
+    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7 lg:pt-12">
       <div class="flex flex-col gap-3.5">
         <span class="chip">Primeiro acesso</span>
         <h1 class="font-display text-[30px] leading-[1.1] font-bold tracking-tight">

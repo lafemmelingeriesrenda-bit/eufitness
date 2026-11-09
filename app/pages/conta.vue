@@ -38,12 +38,12 @@ async function save() {
 </script>
 
 <template>
-  <main class="flex flex-col gap-6 px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-6 px-5 pt-6 pb-10 lg:max-w-xl lg:px-0">
     <div class="flex items-center gap-3">
-      <NuxtLink :to="homeFor(me)" aria-label="Voltar" class="flex size-[46px] items-center justify-center rounded-full border border-line bg-card">
+      <NuxtLink :to="homeFor(me)" aria-label="Voltar" class="flex size-[46px] items-center justify-center rounded-full border border-line bg-card lg:hidden">
         <AppIcon name="arrow" class="rotate-180" />
       </NuxtLink>
-      <h1 class="font-display text-xl font-semibold">Conta</h1>
+      <h1 class="font-display text-xl font-semibold lg:text-[32px] lg:font-bold lg:tracking-tight">Conta</h1>
     </div>
 
     <form class="flex flex-col gap-3" @submit.prevent="save">

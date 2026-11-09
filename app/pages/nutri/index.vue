@@ -33,10 +33,11 @@ const toReviewCount = computed(() => active.value.filter((s) => s.dietToReview).
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-6 lg:px-0">
     <AppHeader />
+    <PageTitle class="lg:col-span-2" :kicker="me?.current?.organization?.name" title="Seus alunos" />
 
-    <section class="grid grid-cols-2 gap-2.5">
+    <section class="grid grid-cols-2 gap-2.5 lg:col-start-2 lg:row-start-2">
       <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
         <span class="font-display text-[26px] font-bold">{{ active.length }}</span>
         <span class="text-xs text-muted">Alunos ativos</span>
@@ -47,7 +48,7 @@ const toReviewCount = computed(() => active.value.filter((s) => s.dietToReview).
       </div>
     </section>
 
-    <section class="flex flex-col gap-4 rounded-[26px] border border-violet-line bg-violet-deep p-5">
+    <section class="flex flex-col gap-4 rounded-[26px] border border-violet-line bg-violet-deep p-5 lg:col-start-2 lg:row-start-3">
       <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
         <AppIcon name="leaf" :size="16" /> Dietas
       </span>
@@ -55,7 +56,7 @@ const toReviewCount = computed(() => active.value.filter((s) => s.dietToReview).
       <p class="text-sm text-muted">Nada vai para o aluno sem a sua assinatura.</p>
     </section>
 
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-3 lg:col-start-1 lg:row-span-3 lg:row-start-2">
       <div class="flex items-center justify-between">
         <h2 class="font-display text-lg font-semibold">Seus alunos</h2>
         <button type="button" class="btn-ghost" @click="showInvite = true">

@@ -26,7 +26,7 @@ function addRefeicao() {
 
     <fieldset class="flex flex-col gap-2">
       <legend class="mb-2 text-sm font-semibold text-muted">Metas do dia</legend>
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <label v-for="m in metas" :key="m.key" class="flex flex-col gap-1 text-xs text-muted">
           {{ m.label }} ({{ m.unit }})
           <input v-model.number="dieta[m.key]" type="number" min="0" inputmode="numeric" class="field h-12">

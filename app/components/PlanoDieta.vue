@@ -4,10 +4,10 @@ defineProps<{ dieta: Dieta }>()
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <p v-if="dieta.resumo" class="text-[15px] leading-relaxed text-muted">{{ dieta.resumo }}</p>
+  <div class="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+    <p v-if="dieta.resumo" class="text-[15px] leading-relaxed text-muted lg:col-span-2">{{ dieta.resumo }}</p>
 
-    <section class="flex flex-col gap-2">
+    <section class="flex flex-col gap-2 lg:col-span-2 lg:grid lg:grid-cols-[1fr_2fr]">
       <div class="flex items-baseline gap-1.5 rounded-[20px] bg-card p-3.5">
         <span class="font-display text-[26px] font-bold text-lime">{{ dieta.calorias_kcal }}</span>
         <span class="text-sm text-muted">kcal por dia</span>
@@ -34,7 +34,7 @@ defineProps<{ dieta: Dieta }>()
       <p v-if="r.observacao" class="text-[13px] text-faint">{{ r.observacao }}</p>
     </article>
 
-    <section v-if="dieta.orientacoes.length" class="flex flex-col gap-2 rounded-[20px] border border-line p-4">
+    <section v-if="dieta.orientacoes.length" class="flex flex-col gap-2 rounded-[20px] border border-line p-4 lg:col-span-2">
       <h3 class="text-sm font-semibold">Orientações</h3>
       <ul class="flex list-disc flex-col gap-1.5 pl-5 text-sm text-muted">
         <li v-for="(o, i) in dieta.orientacoes" :key="i">{{ o }}</li>

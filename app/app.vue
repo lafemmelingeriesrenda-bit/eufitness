@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto min-h-dvh max-w-[480px]">
+  <NuxtLayout>
     <NuxtPage />
-  </div>
+  </NuxtLayout>
 </template>

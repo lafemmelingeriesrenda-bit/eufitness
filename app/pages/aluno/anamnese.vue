@@ -4,7 +4,7 @@ import { anamneseSteps } from '~~/shared/utils/anamnese'
 
 // Anamnese em 6 passos. Salva a cada passo, então o aluno pode parar e
 // continuar depois de onde estava.
-definePageMeta({ roles: ['aluno'], middleware: 'role' })
+definePageMeta({ roles: ['aluno'], middleware: 'role', layout: 'focus' })
 
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
