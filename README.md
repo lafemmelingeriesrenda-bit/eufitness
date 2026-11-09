@@ -21,10 +21,10 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 
 ## Fase 3: treino e dieta com o agente
 
-- Na ficha do aluno, **Treino** e **Dieta** abrem a tela de revisão. O botão **Gerar rascunho** chama `/api/planos/gerar`, que manda a anamnese (sem nome nem contatos) ao Claude (`claude-opus-5-5`) e recebe o plano no formato de `shared/utils/planos.ts`.
+- Na ficha do aluno, **Treino** e **Dieta** abrem a tela de revisão. O botão **Gerar rascunho** chama `/api/planos/gerar`, que manda a anamnese (sem nome nem contatos) ao DeepSeek (`deepseek-flash`, ou o modelo em `DEEPSEEK_MODEL`) no modo JSON. A resposta é conferida com o formato de `shared/utils/planos.ts`; se vier errada, o agente pede de novo uma vez.
 - O personal edita e aprova o **treino**; a nutri edita e aprova a **dieta**. O outro profissional só lê. O agente também deixa avisos "Confira antes de aprovar", que o aluno não vê.
 - Aprovar copia o rascunho para a versão publicada. O aluno vê só essa versão, em `/aluno/plano/treino` e `/aluno/plano/dieta`; editar depois não muda nada para ele até aprovar de novo.
-- **Configuração:** na Vercel, em Settings → Environment Variables, crie `ANTHROPIC_API_KEY` com uma chave de https://console.anthropic.com e faça um novo deploy. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
+- **Configuração:** na Vercel, em Settings → Environment Variables, crie `DEEPSEEK_API_KEY` com uma chave de https://platform.deepseek.com (API keys) e faça um novo deploy. Opcional: `DEEPSEEK_MODEL=deepseek-v4-pro` para usar o modelo maior. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
 
 ## Dono da plataforma
 

@@ -1,10 +1,14 @@
 // O agente: monta o rascunho do treino ou da dieta a partir da anamnese.
-// Uma chamada ao Claude com saída estruturada no formato de shared/utils/planos.ts.
-import Anthropic from '@anthropic-ai/sdk'
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
+// Usa a API do DeepSeek (compatível com a da OpenAI) no modo JSON. O DeepSeek
+// não garante o formato, então o esquema vai no prompt e a resposta é conferida
+// com o zod de shared/utils/planos.ts; se vier errada, pede de novo uma vez.
+import OpenAI from 'openai'
+import { z } from 'zod'
 import type { AnamneseAnswers } from '~~/app/types/database.types'
 
-const MODEL = 'claude-opus-5-5'
+// deepseek-flash é o modelo indicado pela documentação; dá para trocar por
+// deepseek-v4-pro definindo DEEPSEEK_MODEL na Vercel.
+const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 
 const SYSTEM_TREINO = `Você é o assistente de um personal trainer brasileiro. A partir da anamnese de um aluno, monte um RASCUNHO de treino de musculação para o personal revisar, editar e aprovar antes de o aluno receber.
 
@@ -61,45 +65,78 @@ export class AgenteError extends Error {
   }
 }
 
+/** Instruções de formato: o esquema JSON exato que a resposta precisa seguir. */
+function formatoJson(schema: z.ZodType) {
+  return `\n\nResponda APENAS com um objeto json válido, sem texto antes ou depois, que siga exatamente este JSON Schema (todos os campos são obrigatórios; use "" ou [] quando não houver conteúdo):\n${JSON.stringify(z.toJSONSchema(schema))}`
+}
+
 export async function gerarPlano(kind: PlanKind, anamnese: AnamneseAnswers): Promise<PlanContent> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new AgenteError('O agente ainda não está configurado: falta a variável ANTHROPIC_API_KEY na Vercel.', 503)
+  if (!process.env.DEEPSEEK_API_KEY) {
+    throw new AgenteError('O agente ainda não está configurado: falta a variável DEEPSEEK_API_KEY na Vercel.', 503)
   }
 
-  const client = new Anthropic()
-  const schema = kind === 'treino' ? treinoSchema : dietaSchema
+  const client = new OpenAI({
+    baseURL: 'https://api.deepseek.com',
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    timeout: 240_000,
+    maxRetries: 1,
+  })
+  const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA) + formatoJson(schema) },
+    {
+      role: 'user',
+      content: `Anamnese do aluno (json):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`,
+    },
+  ]
 
   try {
-    const response = await client.beta.messages.parse({
-      model: MODEL,
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'medium', format: betaZodOutputFormat(schema) },
-      system: kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA,
-      messages: [{
-        role: 'user',
-        content: `Anamnese do aluno (JSON):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`,
-      }],
-    })
+    // Até duas tentativas: se a primeira vier fora do formato, mostra o erro e pede de novo.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const response = await client.chat.completions.create({
+        model: MODEL,
+        messages,
+        response_format: { type: 'json_object' },
+        max_tokens: 8192,
+      })
+      const choice = response.choices[0]
+      const text = choice?.message.content?.trim() ?? ''
 
-    if (response.stop_reason === 'refusal') {
-      throw new AgenteError('O agente não conseguiu montar este plano. Monte à mão ou ajuste a anamnese e tente de novo.', 422)
+      let problem: string
+      if (choice?.finish_reason === 'length') {
+        problem = 'A resposta foi cortada por ser longa demais. Seja mais conciso nas observações.'
+      } else if (!text) {
+        problem = 'A resposta veio vazia ou não era um json válido.'
+      } else {
+        let json: unknown
+        try {
+          json = JSON.parse(text)
+        } catch {
+          json = undefined
+        }
+        const parsed = schema.safeParse(json)
+        if (parsed.success) return parsed.data
+        problem = json === undefined
+          ? 'A resposta não era um json válido.'
+          : `O json não segue o esquema: ${parsed.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
+        if (text) messages.push({ role: 'assistant', content: text })
+      }
+      messages.push({ role: 'user', content: `${problem} Responda de novo com o json completo e correto.` })
     }
-    if (response.stop_reason === 'max_tokens' || !response.parsed_output) {
-      throw new AgenteError('O agente devolveu uma resposta incompleta. Tente gerar de novo.')
-    }
-    return response.parsed_output as PlanContent
+    throw new AgenteError('O agente devolveu o plano em um formato inesperado. Tente gerar de novo.')
   } catch (error) {
     if (error instanceof AgenteError) throw error
-    if (error instanceof Anthropic.AuthenticationError) {
-      throw new AgenteError('A chave da API da Anthropic é inválida. Confira ANTHROPIC_API_KEY na Vercel.', 503)
+    if (error instanceof OpenAI.AuthenticationError) {
+      throw new AgenteError('A chave da API do DeepSeek é inválida. Confira DEEPSEEK_API_KEY na Vercel.', 503)
     }
-    if (error instanceof Anthropic.RateLimitError) {
+    if (error instanceof OpenAI.RateLimitError) {
       throw new AgenteError('O agente está com muitos pedidos agora. Espere um minuto e tente de novo.', 429)
     }
-    if (error instanceof Anthropic.APIError) {
-      console.error('Erro na API do Claude', error.status, error.message)
+    if (error instanceof OpenAI.APIError) {
+      console.error('Erro na API do DeepSeek', error.status, error.message)
+      // 402 = saldo insuficiente na conta do DeepSeek.
+      if (error.status === 402) throw new AgenteError('A conta do DeepSeek está sem saldo. Recarregue em platform.deepseek.com.', 503)
       throw new AgenteError('O agente está fora do ar no momento. Tente de novo em alguns minutos.')
     }
     throw error

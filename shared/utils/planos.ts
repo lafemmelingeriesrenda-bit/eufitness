@@ -1,5 +1,5 @@
 // Formato dos planos de treino e dieta. O mesmo esquema serve para o agente
-// (saída estruturada do Claude), para a tela de revisão e para a tela do aluno.
+// (resposta em JSON do DeepSeek, conferida com estes esquemas), para a tela de revisão e para a tela do aluno.
 import { z } from 'zod'
 
 export const exercicioSchema = z.object({
