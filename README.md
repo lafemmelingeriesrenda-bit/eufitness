@@ -26,6 +26,12 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 - Aprovar copia o rascunho para a versão publicada. O aluno vê só essa versão, em `/aluno/plano/treino` e `/aluno/plano/dieta`; editar depois não muda nada para ele até aprovar de novo.
 - **Configuração:** na Vercel, em Settings → Environment Variables, crie `DEEPSEEK_API_KEY` com uma chave de https://platform.deepseek.com (API keys) e faça um novo deploy. Opcional: `DEEPSEEK_MODEL=deepseek-v4-pro` para usar o modelo maior. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
 
+## Treino em andamento
+
+- Em **Seu treino**, o aluno escolhe o dia (o app sugere o seguinte ao último feito) e toca em **Começar**. A tela `/aluno/treino/[dia]` mostra um exercício por vez: o aluno marca as séries, ajusta repetições e carga, e o descanso começa sozinho, com vibração no fim.
+- O app salva enquanto o aluno treina (tabela `workout_logs`). Fechar e abrir de novo em até 12 horas continua de onde parou. A próxima vez que fizer o mesmo dia, as cargas já vêm preenchidas.
+- Ao concluir, aparece o resumo (minutos, séries e dias seguidos). O personal vê os últimos treinos na ficha do aluno, com séries e volume (carga × repetições).
+
 ## Dono da plataforma
 
 - Quem está na tabela `platform_admins` (por e-mail) vê o painel `/admin` com todas as assessorias e pessoas. Por enquanto é só leitura.

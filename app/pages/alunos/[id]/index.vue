@@ -12,13 +12,29 @@ const studentId = route.params.id as string
 const home = computed(() => homeFor(me.value))
 
 const { data } = await useAsyncData(`ficha-${studentId}`, async () => {
-  const [profile, anamnese, plans] = await Promise.all([
+  const [profile, anamnese, plans, logs] = await Promise.all([
     supabase.from('profiles').select('full_name, phone').eq('id', studentId).maybeSingle(),
     supabase.from('anamneses').select('*').eq('student_id', studentId).maybeSingle(),
     supabase.from('plans').select('kind, draft_by_agent, draft_updated_at, published_at').eq('student_id', studentId),
+    supabase.from('workout_logs').select('id, day_name, exercises, started_at, finished_at')
+      .eq('student_id', studentId).not('finished_at', 'is', null)
+      .order('started_at', { ascending: false }).limit(8),
   ])
-  return { profile: profile.data, anamnese: anamnese.data, plans: plans.data ?? [] }
+  return { profile: profile.data, anamnese: anamnese.data, plans: plans.data ?? [], logs: logs.data ?? [] }
 })
+
+/** Resumo de cada treino feito: dia, data, duração, séries e volume. */
+const treinosFeitos = computed(() => (data.value?.logs ?? []).map((l) => {
+  const reg = l.exercises as unknown as ExercicioFeito[]
+  return {
+    id: l.id,
+    dia: l.day_name,
+    data: new Date(l.started_at).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }),
+    minutos: Math.max(1, Math.round((new Date(l.finished_at!).getTime() - new Date(l.started_at).getTime()) / 60000)),
+    series: seriesFeitas(reg),
+    volume: volumeKg(reg),
+  }
+}))
 
 const a = computed(() => data.value?.anamnese ?? null)
 
@@ -153,6 +169,21 @@ const sections = computed(() => {
           </span>
           <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" :class="planStatus(k).cls">{{ planStatus(k).text }}</span>
         </NuxtLink>
+      </section>
+
+      <section v-if="treinosFeitos.length" class="flex flex-col gap-2">
+        <h2 class="font-display text-lg font-semibold">Treinos feitos</h2>
+        <div class="flex flex-col divide-y divide-line rounded-[20px] bg-card px-4">
+          <div v-for="t in treinosFeitos" :key="t.id" class="flex items-center justify-between gap-3 py-3">
+            <div class="flex min-w-0 flex-col gap-0.5">
+              <span class="truncate text-sm font-semibold">{{ t.dia }}</span>
+              <span class="text-xs text-muted first-letter:uppercase">{{ t.data }} · {{ t.minutos }} min</span>
+            </div>
+            <span class="shrink-0 text-right text-xs text-muted">
+              {{ t.series }} séries<template v-if="t.volume"><br>{{ t.volume.toLocaleString('pt-BR') }} kg</template>
+            </span>
+          </div>
+        </div>
       </section>
 
       <section class="flex flex-col gap-3 rounded-[22px] bg-card p-4">

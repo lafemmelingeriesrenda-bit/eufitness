@@ -13,9 +13,25 @@ const supabase = useSupabaseClient<Database>()
 const route = useRoute()
 const kind = route.params.kind as PlanKind
 
+const user = useSupabaseUser()
+
 const { data: plan } = await useAsyncData(`meu-plano-${kind}`, async () => {
   const { data } = await supabase.rpc('my_plans')
   return data?.find((p) => p.kind === kind) ?? null
+})
+
+// Treino: sugere o dia seguinte ao último concluído (A → B → C → A…).
+const { data: lastDone } = await useAsyncData(`ultimo-treino-${kind}`, async () => {
+  if (kind !== 'treino') return null
+  const { data } = await supabase
+    .from('workout_logs').select('day_index')
+    .eq('student_id', user.value!.sub).not('finished_at', 'is', null)
+    .order('started_at', { ascending: false }).limit(1).maybeSingle()
+  return data?.day_index ?? null
+})
+const suggested = computed(() => {
+  const dias = (plan.value?.content as unknown as Treino | undefined)?.dias.length ?? 0
+  return lastDone.value === null || lastDone.value === undefined || !dias ? 0 : (lastDone.value + 1) % dias
 })
 </script>
 
@@ -32,7 +48,7 @@ const { data: plan } = await useAsyncData(`meu-plano-${kind}`, async () => {
       <p class="text-xs text-faint">
         Aprovado por {{ plan.published_by_name || 'seu profissional' }} em {{ new Date(plan.published_at).toLocaleDateString('pt-BR') }}
       </p>
-      <PlanoTreino v-if="kind === 'treino'" :treino="plan.content as unknown as Treino" />
+      <PlanoTreino v-if="kind === 'treino'" :treino="plan.content as unknown as Treino" startable :suggested="suggested" />
       <PlanoDieta v-else :dieta="plan.content as unknown as Dieta" />
     </template>
 
