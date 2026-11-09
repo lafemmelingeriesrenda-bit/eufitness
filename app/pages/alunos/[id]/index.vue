@@ -12,13 +12,29 @@ const studentId = route.params.id as string
 const home = computed(() => homeFor(me.value))
 
 const { data } = await useAsyncData(`ficha-${studentId}`, async () => {
-  const [profile, anamnese, plans] = await Promise.all([
+  const [profile, anamnese, plans, logs] = await Promise.all([
     supabase.from('profiles').select('full_name, phone').eq('id', studentId).maybeSingle(),
     supabase.from('anamneses').select('*').eq('student_id', studentId).maybeSingle(),
     supabase.from('plans').select('kind, draft_by_agent, draft_updated_at, published_at').eq('student_id', studentId),
+    supabase.from('workout_logs').select('id, day_name, exercises, started_at, finished_at')
+      .eq('student_id', studentId).not('finished_at', 'is', null)
+      .order('started_at', { ascending: false }).limit(8),
   ])
-  return { profile: profile.data, anamnese: anamnese.data, plans: plans.data ?? [] }
+  return { profile: profile.data, anamnese: anamnese.data, plans: plans.data ?? [], logs: logs.data ?? [] }
 })
+
+/** Resumo de cada treino feito: dia, data, duração, séries e volume. */
+const treinosFeitos = computed(() => (data.value?.logs ?? []).map((l) => {
+  const reg = l.exercises as unknown as ExercicioFeito[]
+  return {
+    id: l.id,
+    dia: l.day_name,
+    data: new Date(l.started_at).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }),
+    minutos: Math.max(1, Math.round((new Date(l.finished_at!).getTime() - new Date(l.started_at).getTime()) / 60000)),
+    series: seriesFeitas(reg),
+    volume: volumeKg(reg),
+  }
+}))
 
 const a = computed(() => data.value?.anamnese ?? null)
 
@@ -88,7 +104,7 @@ const sections = computed(() => {
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:px-0">
     <div class="flex items-center gap-3">
       <NuxtLink :to="home" aria-label="Voltar" class="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-card">
         <AppIcon name="back" :size="22" />
@@ -120,7 +136,8 @@ const sections = computed(() => {
       </p>
     </div>
 
-    <template v-else>
+    <div v-else class="flex flex-col gap-[22px] lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+      <div class="flex flex-col gap-[22px]">
       <section class="grid grid-cols-3 gap-2.5">
         <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
           <span class="font-display text-xl font-bold">{{ fmt(a.weight_kg, 'kg') }}</span>
@@ -155,6 +172,21 @@ const sections = computed(() => {
         </NuxtLink>
       </section>
 
+      <section v-if="treinosFeitos.length" class="flex flex-col gap-2">
+        <h2 class="font-display text-lg font-semibold">Treinos feitos</h2>
+        <div class="flex flex-col divide-y divide-line rounded-[20px] bg-card px-4">
+          <div v-for="t in treinosFeitos" :key="t.id" class="flex items-center justify-between gap-3 py-3">
+            <div class="flex min-w-0 flex-col gap-0.5">
+              <span class="truncate text-sm font-semibold">{{ t.dia }}</span>
+              <span class="text-xs text-muted first-letter:uppercase">{{ t.data }} · {{ t.minutos }} min</span>
+            </div>
+            <span class="shrink-0 text-right text-xs text-muted">
+              {{ t.series }} séries<template v-if="t.volume"><br>{{ t.volume.toLocaleString('pt-BR') }} kg</template>
+            </span>
+          </div>
+        </div>
+      </section>
+
       <section class="flex flex-col gap-3 rounded-[22px] bg-card p-4">
         <span class="text-xs font-bold tracking-[.08em] text-muted uppercase">Objetivo</span>
         <p class="font-display text-xl font-semibold text-lime">{{ labelOf(goalOptions, a.goal) }}</p>
@@ -169,6 +201,8 @@ const sections = computed(() => {
         </div>
       </section>
 
+      </div>
+      <div class="flex flex-col gap-[22px]">
       <section v-for="s in sections" :key="s.title" class="flex flex-col gap-2">
         <h2 class="font-display text-lg font-semibold">{{ s.title }}</h2>
         <dl class="flex flex-col divide-y divide-line rounded-[20px] bg-card px-4">
@@ -185,6 +219,7 @@ const sections = computed(() => {
           · atualizada em {{ new Date(a.updated_at).toLocaleDateString('pt-BR') }}
         </template>
       </p>
-    </template>
+      </div>
+    </div>
   </main>
 </template>

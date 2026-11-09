@@ -166,6 +166,31 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      workout_logs: {
+        Row: {
+          id: string
+          student_id: string
+          organization_id: string
+          day_index: number
+          day_name: string
+          exercises: Json
+          started_at: string
+          finished_at: string | null
+        }
+        Insert: {
+          student_id: string
+          organization_id: string
+          day_index: number
+          day_name: string
+          exercises?: Json
+          started_at?: string
+        }
+        Update: {
+          exercises?: Json
+          finished_at?: string | null
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           student_id: string

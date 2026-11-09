@@ -49,17 +49,17 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-6 lg:px-0">
     <AppHeader />
 
-    <section class="flex flex-col gap-1">
+    <section class="flex flex-col gap-1 lg:col-span-2">
       <span class="text-sm text-muted first-letter:uppercase">{{ today }}</span>
       <h1 class="font-display text-[28px] leading-tight font-bold">
         Bora, <span class="text-lime">{{ firstName }}</span>.
       </h1>
     </section>
 
-    <section class="relative flex items-center gap-5 overflow-hidden rounded-[26px] bg-card p-5">
+    <section class="relative flex items-center gap-5 overflow-hidden rounded-[26px] bg-card p-5 lg:col-start-1">
       <svg aria-hidden="true" width="96" height="96" viewBox="0 0 120 120" class="shrink-0">
         <circle cx="60" cy="60" r="50" fill="none" stroke="#1A1E24" stroke-width="14" />
         <circle cx="60" cy="60" r="50" fill="none" stroke="#C6F432" stroke-width="14" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="250" transform="rotate(-90 60 60)" />
@@ -80,11 +80,11 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       </div>
     </section>
 
-    <NuxtLink v-if="!anamnese?.submitted_at" to="/aluno/anamnese" class="btn-primary">
+    <NuxtLink v-if="!anamnese?.submitted_at" to="/aluno/anamnese" class="btn-primary lg:col-start-1">
       {{ anamnese && anamnese.step > 1 ? `Continuar do passo ${anamnese.step}` : 'Responder anamnese' }}
       <AppIcon name="arrow" />
     </NuxtLink>
-    <section v-else class="grid grid-cols-2 gap-2.5">
+    <section v-else class="grid grid-cols-2 gap-2.5 lg:col-start-1 lg:gap-4">
       <NuxtLink
         v-for="k in (['treino', 'dieta'] as const)"
         :key="k"
@@ -102,11 +102,11 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       </NuxtLink>
     </section>
 
-    <NuxtLink v-if="anamnese?.submitted_at" to="/aluno/anamnese" class="btn-ghost self-start">
+    <NuxtLink v-if="anamnese?.submitted_at" to="/aluno/anamnese" class="btn-ghost self-start lg:col-start-1 lg:justify-self-start">
       <AppIcon name="edit" :size="16" /> Revisar minhas respostas
     </NuxtLink>
 
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-3 lg:col-start-2 lg:row-span-4 lg:row-start-2">
       <h2 class="font-display text-lg font-semibold">Sua equipe</h2>
       <div v-for="p in team ?? []" :key="p.id" class="flex items-center gap-3.5 rounded-[20px] bg-card px-3.5 py-3">
         <AppAvatar :name="p.name" :size="42" :color="p.role === 'nutri' ? '#8B7CFF' : '#C6F432'" />

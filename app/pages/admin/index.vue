@@ -42,8 +42,9 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
 </script>
 
 <template>
-  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10">
-    <header class="flex items-center justify-between gap-3">
+  <main class="flex flex-col gap-[22px] px-5 pt-6 pb-10 lg:px-0">
+    <PageTitle kicker="Dono da plataforma" title="Plataforma" />
+    <header class="flex items-center justify-between gap-3 lg:hidden">
       <div class="flex min-w-0 items-center gap-3">
         <NuxtLink
           v-if="me?.current"
@@ -65,7 +66,7 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
 
     <p v-if="error" class="text-sm text-danger" role="alert">Não deu para carregar: {{ friendlyError(error) }}</p>
 
-    <section class="grid grid-cols-2 gap-2.5">
+    <section class="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-4">
       <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">
         <span class="font-display text-[26px] font-bold">{{ totals.assessorias }}</span>
         <span class="text-xs text-muted">Assessorias</span>
@@ -84,8 +85,8 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
       </div>
     </section>
 
-    <div class="flex flex-col gap-3">
-      <div class="grid grid-cols-2 gap-1 rounded-full border border-line bg-card p-1" role="tablist">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div class="grid grid-cols-2 gap-1 rounded-full border border-line bg-card p-1 lg:w-[360px] lg:shrink-0" role="tablist">
         <button
           v-for="t in (['assessorias', 'pessoas'] as const)"
           :key="t"
@@ -103,8 +104,8 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
       <input id="busca" v-model="search" class="field" type="search" placeholder="Buscar por nome ou e-mail">
     </div>
 
-    <section v-if="tab === 'assessorias'" class="flex flex-col gap-3">
-      <div v-if="!filteredOrgs.length" class="rounded-[20px] border border-dashed border-line p-5 text-center text-sm text-muted">
+    <section v-if="tab === 'assessorias'" class="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+      <div v-if="!filteredOrgs.length" class="rounded-[20px] border border-dashed border-line p-5 text-center text-sm text-muted lg:col-span-2">
         {{ orgs.length ? 'Nada encontrado.' : 'Nenhuma assessoria criada ainda.' }}
       </div>
       <article v-for="o in filteredOrgs" :key="o.id" class="flex flex-col gap-3 rounded-[20px] bg-card p-4">
@@ -124,8 +125,8 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
       </article>
     </section>
 
-    <section v-else class="flex flex-col gap-3">
-      <div v-if="!filteredUsers.length" class="rounded-[20px] border border-dashed border-line p-5 text-center text-sm text-muted">
+    <section v-else class="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+      <div v-if="!filteredUsers.length" class="rounded-[20px] border border-dashed border-line p-5 text-center text-sm text-muted lg:col-span-2">
         Nada encontrado.
       </div>
       <article v-for="u in filteredUsers" :key="u.id" class="flex items-start gap-3.5 rounded-[20px] bg-card px-3.5 py-3">

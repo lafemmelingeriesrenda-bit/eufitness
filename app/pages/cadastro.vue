@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
 // Cria a conta. Sem convite, é um personal novo (vai criar a assessoria);
 // com ?convite=codigo, é um aluno ou nutri que veio pelo link.
 const supabase = useSupabaseClient()
@@ -39,8 +40,8 @@ async function signUp() {
 
 <template>
   <div class="relative flex min-h-dvh flex-col overflow-hidden">
-    <AppRings />
-    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7">
+    <AppRings class="lg:hidden" />
+    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7 lg:pt-12">
       <div class="flex flex-col gap-3.5">
         <span class="chip">{{ invite ? 'Convite' : 'Para personais' }}</span>
         <h1 class="font-display text-[32px] leading-[1.08] font-bold tracking-tight">

@@ -9,7 +9,7 @@ const label = computed(() => {
 </script>
 
 <template>
-  <header class="flex items-center justify-between gap-3">
+  <header class="flex items-center justify-between gap-3 lg:hidden">
     <div class="flex min-w-0 items-center gap-3">
       <AppAvatar :name="me?.profile.full_name ?? ''" />
       <div class="flex min-w-0 flex-col gap-0.5">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
 import type { Database } from '~/types/database.types'
 
 // Página aberta pelo link de convite. Funciona sem login para mostrar o
@@ -51,8 +52,8 @@ async function accept() {
 
 <template>
   <div class="relative flex min-h-dvh flex-col overflow-hidden">
-    <AppRings />
-    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7">
+    <AppRings class="lg:hidden" />
+    <div class="relative flex flex-1 flex-col gap-7 px-6 pt-[180px] pb-7 lg:pt-12">
       <div v-if="status === 'pending'" class="text-muted">Carregando convite…</div>
 
       <template v-else-if="!invite || !invite.valid">
