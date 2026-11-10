@@ -55,15 +55,27 @@ export default defineEventHandler(async (event) => {
     throw error
   }
 
-  // Confere os ids devolvidos: nome sempre igual ao do catálogo; id inventado é descartado.
-  if (kind === 'treino' && catalogo.length) {
+  // Confere os ids devolvidos: nome sempre igual ao do catálogo. Exercício fora do
+  // catálogo (id vazio ou inventado) fica no rascunho, mas vira um aviso para o personal.
+  if (kind === 'treino') {
+    const treino = draft as Treino
     const porId = new Map(catalogo.map((e) => [e.id, e]))
-    for (const dia of (draft as Treino).dias) {
+    const foraDoCatalogo: string[] = []
+    for (const dia of treino.dias) {
       for (const ex of dia.exercicios) {
         const c = ex.exercicio_id ? porId.get(ex.exercicio_id) : undefined
-        if (c) ex.nome = c.nome
-        else ex.exercicio_id = ''
+        if (c) {
+          ex.nome = c.nome
+        } else {
+          ex.exercicio_id = ''
+          foraDoCatalogo.push(`${ex.nome} (${dia.nome})`)
+        }
       }
+    }
+    if (foraDoCatalogo.length) {
+      treino.alertas_para_profissional.push(
+        `Fora do catálogo da assessoria: ${foraDoCatalogo.join('; ')}. Troque por um exercício do catálogo ou confira antes de aprovar.`,
+      )
     }
   }
 
@@ -88,10 +100,10 @@ async function carregarCatalogo(
   orgId: string,
   local: 'academia' | 'casa' | 'livre' | null,
 ): Promise<ExercicioCatalogo[]> {
-  const rows: Pick<Database['public']['Tables']['exercises']['Row'], 'id' | 'organization_id' | 'name_pt' | 'name_en' | 'category' | 'equipment' | 'primary_muscles'>[] = []
+  const rows: Pick<Database['public']['Tables']['exercises']['Row'], 'id' | 'organization_id' | 'name_pt' | 'name_en' | 'category' | 'level' | 'equipment' | 'primary_muscles' | 'secondary_muscles'>[] = []
   for (let from = 0; ; from += 1000) {
     const { data } = await supabase
-      .from('exercises').select('id, organization_id, name_pt, name_en, category, equipment, primary_muscles')
+      .from('exercises').select('id, organization_id, name_pt, name_en, category, level, equipment, primary_muscles, secondary_muscles')
       .order('id').range(from, from + 999)
     rows.push(...(data ?? []))
     if (!data || data.length < 1000) break
@@ -110,7 +122,10 @@ async function carregarCatalogo(
     .map((r) => ({
       id: r.id,
       nome: nomeExercicio(r, porId.get(r.id)?.custom_name),
+      categoria: categoriaLabel[r.category ?? ''] ?? 'Musculação',
       equipamento: equipamentoLabel[r.equipment ?? ''] ?? 'Outro',
       musculos: r.primary_muscles.map((m) => musculoLabel[m] ?? m).join(', '),
+      secundarios: r.secondary_muscles.map((m) => musculoLabel[m] ?? m).join(', '),
+      nivel: nivelLabel[r.level ?? ''] ?? '-',
     }))
 }
