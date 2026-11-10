@@ -90,51 +90,39 @@ function instrucoesDoProfissional(kind: PlanKind, geral?: string | null, extra?:
   return texto
 }
 
-export async function gerarPlano(
-  kind: PlanKind,
-  anamnese: AnamneseAnswers,
-  opcoes: { instrucoes?: string | null; extra?: string | null } = {},
-): Promise<PlanContent> {
+/**
+ * Chama o DeepSeek no modo JSON e confere a resposta com o esquema zod.
+ * Se vier vazia, cortada ou fora do formato, mostra o problema e pede de novo uma vez.
+ */
+export async function pedirJson<T>(system: string, user: string, schema: z.ZodType<T>, maxTokens = 8192): Promise<T> {
   if (!process.env.DEEPSEEK_API_KEY) {
     throw new AgenteError('O agente ainda não está configurado: falta a variável DEEPSEEK_API_KEY na Vercel.', 503)
   }
-
   const client = new OpenAI({
     baseURL: 'https://api.deepseek.com',
     apiKey: process.env.DEEPSEEK_API_KEY,
     timeout: 240_000,
     maxRetries: 1,
   })
-  const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
-
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA)
-        + instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra)
-        + formatoJson(schema),
-    },
-    {
-      role: 'user',
-      content: `Anamnese do aluno (json):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`,
-    },
+    { role: 'system', content: system + formatoJson(schema) },
+    { role: 'user', content: user },
   ]
 
   try {
-    // Até duas tentativas: se a primeira vier fora do formato, mostra o erro e pede de novo.
     for (let attempt = 1; attempt <= 2; attempt++) {
       const response = await client.chat.completions.create({
         model: MODEL,
         messages,
         response_format: { type: 'json_object' },
-        max_tokens: 8192,
+        max_tokens: maxTokens,
       })
       const choice = response.choices[0]
       const text = choice?.message.content?.trim() ?? ''
 
       let problem: string
       if (choice?.finish_reason === 'length') {
-        problem = 'A resposta foi cortada por ser longa demais. Seja mais conciso nas observações.'
+        problem = 'A resposta foi cortada por ser longa demais. Seja mais conciso.'
       } else if (!text) {
         problem = 'A resposta veio vazia ou não era um json válido.'
       } else {
@@ -153,7 +141,7 @@ export async function gerarPlano(
       }
       messages.push({ role: 'user', content: `${problem} Responda de novo com o json completo e correto.` })
     }
-    throw new AgenteError('O agente devolveu o plano em um formato inesperado. Tente gerar de novo.')
+    throw new AgenteError('O agente devolveu a resposta em um formato inesperado. Tente de novo.')
   } catch (error) {
     if (error instanceof AgenteError) throw error
     if (error instanceof OpenAI.AuthenticationError) {
@@ -170,4 +158,25 @@ export async function gerarPlano(
     }
     throw error
   }
+}
+
+/** Uma linha por exercício do catálogo: "id | nome | equipamento | músculos". */
+export type ExercicioCatalogo = { id: string; nome: string; equipamento: string; musculos: string }
+
+function catalogoParaAgente(catalogo: ExercicioCatalogo[]) {
+  if (!catalogo.length) return ''
+  return `\n\nCATÁLOGO DE EXERCÍCIOS DA ASSESSORIA. Escolha os exercícios SOMENTE desta lista. Em cada exercício, preencha "exercicio_id" com o id exato (antes do primeiro "|") e "nome" com o nome exatamente como está aqui. Só use um exercício fora da lista se nenhum servir; nesse caso deixe exercicio_id vazio e explique em alertas_para_profissional.\n${catalogo.map((e) => `${e.id} | ${e.nome} | ${e.equipamento} | ${e.musculos}`).join('\n')}`
+}
+
+export async function gerarPlano(
+  kind: PlanKind,
+  anamnese: AnamneseAnswers,
+  opcoes: { instrucoes?: string | null; extra?: string | null; catalogo?: ExercicioCatalogo[] } = {},
+): Promise<PlanContent> {
+  const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
+  const system = (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA)
+    + instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra)
+    + (kind === 'treino' ? catalogoParaAgente(opcoes.catalogo ?? []) : '')
+  const user = `Anamnese do aluno (json):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`
+  return pedirJson(system, user, schema)
 }

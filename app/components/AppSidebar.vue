@@ -10,6 +10,7 @@ const items = computed<Item[]>(() => {
   const list: Item[] = []
   if (role === 'personal' || role === 'nutri') {
     list.push({ to: roleHome[role], label: role === 'personal' ? 'Painel' : 'Seus alunos', icon: 'users' })
+    if (role === 'personal') list.push({ to: '/exercicios', label: 'Exercícios', icon: 'dumbbell' })
     list.push({ to: '/agente', label: 'Agente', icon: 'sparkle' })
   } else if (role === 'aluno') {
     list.push(

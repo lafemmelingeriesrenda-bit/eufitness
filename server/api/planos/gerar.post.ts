@@ -43,12 +43,28 @@ export default defineEventHandler(async (event) => {
     .from('agent_instructions').select('instructions')
     .eq('user_id', user.sub).eq('kind', kind).maybeSingle()
 
+  // Treino: exercícios do catálogo que a assessoria deixou ligados e que
+  // combinam com o local onde o aluno treina.
+  const catalogo = kind === 'treino' ? await carregarCatalogo(supabase, anamnese.organization_id, anamnese.training_place) : []
+
   let draft: PlanContent
   try {
-    draft = await gerarPlano(kind, anamnese, { instrucoes: instr?.instructions, extra: parsed.data.extra })
+    draft = await gerarPlano(kind, anamnese, { instrucoes: instr?.instructions, extra: parsed.data.extra, catalogo })
   } catch (error) {
     if (error instanceof AgenteError) throw createError({ statusCode: error.status, statusMessage: error.message })
     throw error
+  }
+
+  // Confere os ids devolvidos: nome sempre igual ao do catálogo; id inventado é descartado.
+  if (kind === 'treino' && catalogo.length) {
+    const porId = new Map(catalogo.map((e) => [e.id, e]))
+    for (const dia of (draft as Treino).dias) {
+      for (const ex of dia.exercicios) {
+        const c = ex.exercicio_id ? porId.get(ex.exercicio_id) : undefined
+        if (c) ex.nome = c.nome
+        else ex.exercicio_id = ''
+      }
+    }
   }
 
   const fields = {
@@ -65,3 +81,36 @@ export default defineEventHandler(async (event) => {
 
   return { draft }
 })
+
+/** Exercícios ligados da assessoria (globais + próprios), filtrados pelo local de treino. */
+async function carregarCatalogo(
+  supabase: Awaited<ReturnType<typeof serverSupabaseClient<Database>>>,
+  orgId: string,
+  local: 'academia' | 'casa' | 'livre' | null,
+): Promise<ExercicioCatalogo[]> {
+  const rows: Pick<Database['public']['Tables']['exercises']['Row'], 'id' | 'organization_id' | 'name_pt' | 'name_en' | 'category' | 'equipment' | 'primary_muscles'>[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from('exercises').select('id, organization_id, name_pt, name_en, category, equipment, primary_muscles')
+      .order('id').range(from, from + 999)
+    rows.push(...(data ?? []))
+    if (!data || data.length < 1000) break
+  }
+  const { data: ajustes } = await supabase
+    .from('organization_exercises').select('exercise_id, enabled, custom_name').eq('organization_id', orgId)
+  const porId = new Map((ajustes ?? []).map((a) => [a.exercise_id, a]))
+  const permitidos = equipamentosPorLocal[local ?? 'academia']
+
+  return rows
+    .filter((r) => r.organization_id === null || r.organization_id === orgId)
+    .filter((r) => porId.get(r.id)?.enabled !== false)
+    // Exercício próprio da assessoria sempre entra; os globais passam pelos filtros.
+    .filter((r) => r.organization_id !== null || categoriasParaTreino.includes(r.category ?? ''))
+    .filter((r) => r.organization_id !== null || !permitidos || permitidos.includes(r.equipment ?? 'other'))
+    .map((r) => ({
+      id: r.id,
+      nome: nomeExercicio(r, porId.get(r.id)?.custom_name),
+      equipamento: equipamentoLabel[r.equipment ?? ''] ?? 'Outro',
+      musculos: r.primary_muscles.map((m) => musculoLabel[m] ?? m).join(', '),
+    }))
+}

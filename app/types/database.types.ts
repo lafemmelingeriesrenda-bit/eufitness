@@ -166,6 +166,72 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      exercises: {
+        Row: {
+          id: string
+          organization_id: string | null
+          name_en: string | null
+          name_pt: string | null
+          category: string | null
+          level: string | null
+          equipment: string | null
+          mechanic: string | null
+          force: string | null
+          primary_muscles: string[]
+          secondary_muscles: string[]
+          instructions_en: string[]
+          instructions_pt: string[]
+          images: string[]
+          source: string
+          created_at: string
+        }
+        Insert: {
+          id: string
+          organization_id?: string | null
+          name_en?: string | null
+          name_pt?: string | null
+          category?: string | null
+          level?: string | null
+          equipment?: string | null
+          primary_muscles?: string[]
+          secondary_muscles?: string[]
+          instructions_pt?: string[]
+          images?: string[]
+          source?: string
+        }
+        Update: {
+          name_pt?: string | null
+          category?: string | null
+          level?: string | null
+          equipment?: string | null
+          mechanic?: string | null
+          force?: string | null
+          primary_muscles?: string[]
+          secondary_muscles?: string[]
+          instructions_pt?: string[]
+          images?: string[]
+        }
+        Relationships: []
+      }
+      organization_exercises: {
+        Row: {
+          organization_id: string
+          exercise_id: string
+          enabled: boolean
+          custom_name: string | null
+          video_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          organization_id: string
+          exercise_id: string
+          enabled?: boolean
+          custom_name?: string | null
+          video_url?: string | null
+        }
+        Update: { enabled?: boolean; custom_name?: string | null; video_url?: string | null }
+        Relationships: []
+      }
       agent_instructions: {
         Row: { user_id: string; kind: PlanKindDb; instructions: string; updated_at: string }
         Insert: { user_id: string; kind: PlanKindDb; instructions?: string }
