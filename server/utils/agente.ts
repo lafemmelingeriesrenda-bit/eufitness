@@ -5,21 +5,14 @@
 import OpenAI from 'openai'
 import { z } from 'zod'
 import type { AnamneseAnswers } from '~~/app/types/database.types'
+import { PROMPT_TREINO } from './prompts/treino'
 
 // deepseek-flash é o modelo indicado pela documentação; dá para trocar por
 // deepseek-v4-pro definindo DEEPSEEK_MODEL na Vercel.
 const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 
-const SYSTEM_TREINO = `Você é o assistente de um personal trainer brasileiro. A partir da anamnese de um aluno, monte um RASCUNHO de treino de musculação para o personal revisar, editar e aprovar antes de o aluno receber.
-
-Regras:
-- Respeite exatamente os dias por semana, o tempo por treino, o local (academia, casa ou ao ar livre, com o que esse local costuma ter) e o nível de experiência informados.
-- Monte uma divisão por dia de treino. Para iniciantes, prefira treinos de corpo inteiro ou divisões simples, com exercícios guiados ou em máquina quando estiver na academia.
-- Ajuste o volume ao tempo disponível: conte cerca de 2 a 3 minutos por série, incluindo o descanso.
-- Dores, lesões e condições de saúde: evite ou adapte os exercícios que pioram o quadro, diga a adaptação no campo observacao e registre o ponto em alertas_para_profissional. Nunca faça diagnóstico.
-- Use os nomes de exercícios como as academias brasileiras chamam.
-- Escreva para um aluno leigo, em português do Brasil, com frases curtas.
-- Se alguma resposta da anamnese parecer arriscada ou contraditória (gestação, cirurgia recente, doença cardíaca, idade avançada sem liberação médica), monte um plano conservador e explique em alertas_para_profissional.`
+// Treino: o texto completo está em server/utils/prompts/treino.ts.
+const SYSTEM_TREINO = PROMPT_TREINO
 
 const SYSTEM_DIETA = `Você é o assistente de um nutricionista brasileiro. A partir da anamnese de um paciente que também treina, monte um RASCUNHO de plano alimentar para o nutricionista revisar, editar e aprovar antes de o paciente receber.
 
@@ -160,12 +153,29 @@ export async function pedirJson<T>(system: string, user: string, schema: z.ZodTy
   }
 }
 
-/** Uma linha por exercício do catálogo: "id | nome | equipamento | músculos". */
-export type ExercicioCatalogo = { id: string; nome: string; equipamento: string; musculos: string }
+/**
+ * Um exercício do catálogo como o agente recebe:
+ * "id | nome | categoria | equipamento | músculos principais | músculos secundários | nível".
+ */
+export type ExercicioCatalogo = {
+  id: string
+  nome: string
+  categoria: string
+  equipamento: string
+  musculos: string
+  secundarios: string
+  nivel: string
+}
 
+/** Catálogo filtrado, no fim do prompt de sistema (seção 5 do prompt de treino). */
 function catalogoParaAgente(catalogo: ExercicioCatalogo[]) {
-  if (!catalogo.length) return ''
-  return `\n\nCATÁLOGO DE EXERCÍCIOS DA ASSESSORIA. Escolha os exercícios SOMENTE desta lista. Em cada exercício, preencha "exercicio_id" com o id exato (antes do primeiro "|") e "nome" com o nome exatamente como está aqui. Só use um exercício fora da lista se nenhum servir; nesse caso deixe exercicio_id vazio e explique em alertas_para_profissional.\n${catalogo.map((e) => `${e.id} | ${e.nome} | ${e.equipamento} | ${e.musculos}`).join('\n')}`
+  if (!catalogo.length) {
+    return '\n\nCATÁLOGO DE EXERCÍCIOS: nenhum exercício disponível para este aluno. Não monte exercícios; explique a limitação em alertas_para_profissional.'
+  }
+  return `\n\nCATÁLOGO DE EXERCÍCIOS (já filtrado pelo sistema: exercícios ligados pela assessoria e compatíveis com o local de treino do aluno).
+Formato de cada linha: id | nome | categoria | equipamento | músculos principais | músculos secundários | nível.
+Use em "exercicio_id" exatamente o id (o texto antes do primeiro "|") e em "nome" exatamente o nome da mesma linha.
+${catalogo.map((e) => `${e.id} | ${e.nome} | ${e.categoria} | ${e.equipamento} | ${e.musculos} | ${e.secundarios || '-'} | ${e.nivel}`).join('\n')}`
 }
 
 export async function gerarPlano(
@@ -177,6 +187,10 @@ export async function gerarPlano(
   const system = (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA)
     + instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra)
     + (kind === 'treino' ? catalogoParaAgente(opcoes.catalogo ?? []) : '')
-  const user = `Anamnese do aluno (json):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`
+  const anamneseJson = JSON.stringify(anamneseParaAgente(anamnese), null, 2)
+  const user = kind === 'treino'
+    // Operação explícita, como pede a seção "Diretrizes para operações futuras" do prompt.
+    ? `OPERAÇÃO: CRIAR_TREINO\n\nAnamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de treino. Escreva todos os textos em português do Brasil.`
+    : `Anamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de plano alimentar.`
   return pedirJson(system, user, schema)
 }
