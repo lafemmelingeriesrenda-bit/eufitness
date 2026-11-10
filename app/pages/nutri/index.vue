@@ -54,6 +54,7 @@ const toReviewCount = computed(() => active.value.filter((s) => s.dietToReview).
       </span>
       <p class="font-display text-xl leading-tight font-semibold">Abra um aluno e toque em Dieta para o agente montar o rascunho</p>
       <p class="text-sm text-muted">Nada vai para o aluno sem a sua assinatura.</p>
+      <NuxtLink to="/agente" class="btn-ghost self-start"><AppIcon name="edit" :size="16" /> Configurar instruções do agente</NuxtLink>
     </section>
 
     <section class="flex flex-col gap-3 lg:col-start-1 lg:row-span-3 lg:row-start-2">

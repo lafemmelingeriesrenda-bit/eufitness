@@ -7,6 +7,8 @@ import type { Database } from '~~/app/types/database.types'
 const bodySchema = z.object({
   studentId: z.string().uuid(),
   kind: z.enum(['treino', 'dieta']),
+  /** Pedido do profissional só para este aluno (opcional). */
+  extra: z.string().max(1000).optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -36,9 +38,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Instruções gerais de quem está gerando (tela Agente).
+  const { data: instr } = await supabase
+    .from('agent_instructions').select('instructions')
+    .eq('user_id', user.sub).eq('kind', kind).maybeSingle()
+
   let draft: PlanContent
   try {
-    draft = await gerarPlano(kind, anamnese)
+    draft = await gerarPlano(kind, anamnese, { instrucoes: instr?.instructions, extra: parsed.data.extra })
   } catch (error) {
     if (error instanceof AgenteError) throw createError({ statusCode: error.status, statusMessage: error.message })
     throw error

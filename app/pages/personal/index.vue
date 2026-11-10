@@ -98,6 +98,7 @@ function anamneseTag(studentId: string) {
       </span>
       <p class="font-display text-xl leading-tight font-semibold">O agente monta treino e dieta a partir da anamnese</p>
       <p class="text-sm text-muted">Abra um aluno, toque em Treino e gere o rascunho. Você revisa o treino, o nutricionista revisa a dieta, e só então o aluno recebe.</p>
+      <NuxtLink to="/agente" class="btn-ghost self-start"><AppIcon name="edit" :size="16" /> Configurar instruções do agente</NuxtLink>
     </section>
 
     <section class="flex flex-col gap-3 lg:col-start-1 lg:row-span-3 lg:row-start-3">

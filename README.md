@@ -26,6 +26,12 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 - Aprovar copia o rascunho para a versão publicada. O aluno vê só essa versão, em `/aluno/plano/treino` e `/aluno/plano/dieta`; editar depois não muda nada para ele até aprovar de novo.
 - **Configuração:** na Vercel, em Settings → Environment Variables, crie `DEEPSEEK_API_KEY` com uma chave de https://platform.deepseek.com (API keys) e faça um novo deploy. Opcional: `DEEPSEEK_MODEL=deepseek-v4-pro` para usar o modelo maior. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
 
+## Instruções do agente
+
+- Em **Agente** (menu lateral, ou o botão "Configurar instruções do agente" no painel), cada profissional escreve o próprio jeito de montar planos: o personal para os treinos, a nutricionista para as dietas. Há sugestões prontas para tocar e adicionar.
+- As instruções ficam na tabela `agent_instructions`, uma por profissional e tipo, e só o dono vê. O agente recebe essas instruções junto com a anamnese em todo rascunho que esse profissional gerar.
+- Na revisão do plano, o campo **"Algo específico para [aluno]?"** manda um pedido só para aquela geração. Ele tem prioridade sobre as instruções gerais. As regras de segurança (dores, alergias, condições) sempre vêm primeiro; se houver conflito, o agente avisa em "Confira antes de aprovar".
+
 ## Treino em andamento
 
 - Em **Seu treino**, o aluno escolhe o dia (o app sugere o seguinte ao último feito) e toca em **Começar**. A tela `/aluno/treino/[dia]` mostra um exercício por vez: o aluno marca as séries, ajusta repetições e carga, e o descanso começa sozinho, com vibração no fim.
