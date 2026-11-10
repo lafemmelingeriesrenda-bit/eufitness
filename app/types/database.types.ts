@@ -166,6 +166,12 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      agent_instructions: {
+        Row: { user_id: string; kind: PlanKindDb; instructions: string; updated_at: string }
+        Insert: { user_id: string; kind: PlanKindDb; instructions?: string }
+        Update: { instructions?: string }
+        Relationships: []
+      }
       workout_logs: {
         Row: {
           id: string
@@ -292,6 +298,10 @@ export type Database = {
       }
       can_manage_plan: {
         Args: { org: string; student: string; k: PlanKindDb }
+        Returns: boolean
+      }
+      can_instruct: {
+        Args: { k: PlanKindDb }
         Returns: boolean
       }
       approve_plan: {

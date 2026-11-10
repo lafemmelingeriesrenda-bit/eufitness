@@ -70,7 +70,31 @@ function formatoJson(schema: z.ZodType) {
   return `\n\nResponda APENAS com um objeto json válido, sem texto antes ou depois, que siga exatamente este JSON Schema (todos os campos são obrigatórios; use "" ou [] quando não houver conteúdo):\n${JSON.stringify(z.toJSONSchema(schema))}`
 }
 
-export async function gerarPlano(kind: PlanKind, anamnese: AnamneseAnswers): Promise<PlanContent> {
+/**
+ * Instruções do profissional: o "jeito" dele de montar planos (tela Agente) e,
+ * opcionalmente, um pedido só para este aluno. Entram depois das regras base;
+ * as regras de segurança (dores, alergias, condições) continuam valendo.
+ */
+function instrucoesDoProfissional(kind: PlanKind, geral?: string | null, extra?: string | null) {
+  const quem = kind === 'treino' ? 'personal' : 'nutricionista'
+  let texto = ''
+  if (geral?.trim()) {
+    texto += `\n\nInstruções do ${quem} responsável (siga em todo plano dele):\n"""\n${geral.trim()}\n"""`
+  }
+  if (extra?.trim()) {
+    texto += `\n\nPedido do ${quem} só para este aluno (tem prioridade sobre as instruções gerais):\n"""\n${extra.trim()}\n"""`
+  }
+  if (texto) {
+    texto += `\n\nSe alguma instrução do ${quem} conflitar com a segurança do aluno (dores, lesões, alergias, condições de saúde), priorize a segurança e explique o conflito em alertas_para_profissional.`
+  }
+  return texto
+}
+
+export async function gerarPlano(
+  kind: PlanKind,
+  anamnese: AnamneseAnswers,
+  opcoes: { instrucoes?: string | null; extra?: string | null } = {},
+): Promise<PlanContent> {
   if (!process.env.DEEPSEEK_API_KEY) {
     throw new AgenteError('O agente ainda não está configurado: falta a variável DEEPSEEK_API_KEY na Vercel.', 503)
   }
@@ -84,7 +108,12 @@ export async function gerarPlano(kind: PlanKind, anamnese: AnamneseAnswers): Pro
   const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA) + formatoJson(schema) },
+    {
+      role: 'system',
+      content: (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA)
+        + instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra)
+        + formatoJson(schema),
+    },
     {
       role: 'user',
       content: `Anamnese do aluno (json):\n${JSON.stringify(anamneseParaAgente(anamnese), null, 2)}\n\nMonte o rascunho de ${kind === 'treino' ? 'treino' : 'plano alimentar'}.`,
