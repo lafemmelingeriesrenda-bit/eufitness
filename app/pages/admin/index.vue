@@ -36,6 +36,46 @@ const filteredUsers = computed(() => {
   return q ? users.value.filter((u) => norm(`${u.full_name} ${u.email} ${u.roles.map((r) => r.organization).join(' ')}`).includes(q)) : users.value
 })
 
+// ---- Catálogo de exercícios: tradução feita pelo agente ----
+const { data: catalogo, refresh: refreshCatalogo } = await useAsyncData('admin-catalogo', async () => {
+  const [total, traduzidos] = await Promise.all([
+    supabase.from('exercises').select('id', { count: 'exact', head: true }).is('organization_id', null),
+    supabase.from('exercises').select('id', { count: 'exact', head: true }).is('organization_id', null).not('name_pt', 'is', null),
+  ])
+  return { total: total.count ?? 0, traduzidos: traduzidos.count ?? 0 }
+})
+const translating = ref(false)
+const stopRequested = ref(false)
+const translateError = ref('')
+
+async function traduzirCatalogo() {
+  translateError.value = ''
+  stopRequested.value = false
+  translating.value = true
+  const { data: pendentes } = await supabase
+    .from('exercises').select('id').is('organization_id', null).is('name_pt', null).order('id').limit(2000)
+  const lotes: string[][] = []
+  const ids = (pendentes ?? []).map((p) => p.id)
+  for (let i = 0; i < ids.length; i += 12) lotes.push(ids.slice(i, i + 12))
+
+  // Quatro lotes ao mesmo tempo para não demorar demais.
+  async function worker() {
+    while (lotes.length && !stopRequested.value && !translateError.value) {
+      const lote = lotes.shift()!
+      try {
+        const res = await $fetch<{ traduzidos: number }>('/api/admin/catalogo/traduzir', { method: 'POST', body: { ids: lote } })
+        if (catalogo.value) catalogo.value.traduzidos += res.traduzidos
+      } catch (e: unknown) {
+        const err = e as { data?: { statusMessage?: string }; statusMessage?: string }
+        translateError.value = err.data?.statusMessage || err.statusMessage || 'Falhou. Tente continuar daqui a pouco.'
+      }
+    }
+  }
+  await Promise.all([worker(), worker(), worker(), worker()])
+  translating.value = false
+  await refreshCatalogo()
+}
+
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—')
 const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; is_admin: boolean }[]) =>
   roles.map((r) => `${roleLabel[r.role]}${r.is_admin ? ' (admin)' : ''} · ${r.organization}`).join('\n') || 'Sem assessoria'
@@ -65,6 +105,32 @@ const rolesText = (roles: { organization: string; role: keyof typeof roleLabel; 
     </header>
 
     <p v-if="error" class="text-sm text-danger" role="alert">Não deu para carregar: {{ friendlyError(error) }}</p>
+
+    <section v-if="catalogo && catalogo.traduzidos < catalogo.total" class="flex flex-col gap-3 rounded-[22px] border border-violet-line bg-violet-deep p-5">
+      <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
+        <AppIcon name="dumbbell" :size="16" /> Catálogo de exercícios
+      </span>
+      <p class="font-display text-lg leading-tight font-semibold">
+        {{ catalogo.traduzidos }} de {{ catalogo.total }} exercícios traduzidos para o português
+      </p>
+      <div class="h-2 overflow-hidden rounded-full bg-raised" aria-hidden="true">
+        <div class="h-full rounded-full bg-lime transition-all" :style="{ width: `${Math.round((catalogo.traduzidos / Math.max(1, catalogo.total)) * 100)}%` }" />
+      </div>
+      <p class="text-sm text-muted">
+        O agente traduz nome e instruções com os nomes usados nas academias brasileiras. Leva uns 10 minutos; deixe esta tela aberta.
+        Dá para parar e continuar depois. Cada assessoria ainda pode renomear do seu jeito.
+      </p>
+      <p v-if="translateError" class="text-sm text-danger" role="alert">{{ translateError }}</p>
+      <div class="flex flex-wrap gap-2">
+        <button v-if="!translating" type="button" class="btn-primary h-12 lg:w-[280px]" @click="traduzirCatalogo">
+          <AppIcon name="sparkle" :size="18" /> {{ catalogo.traduzidos ? 'Continuar tradução' : 'Traduzir com o agente' }}
+        </button>
+        <template v-else>
+          <span class="flex items-center gap-2 text-sm"><span class="size-5 animate-spin rounded-full border-[3px] border-raised border-t-lime" /> Traduzindo…</span>
+          <button type="button" class="btn-ghost" :disabled="stopRequested" @click="stopRequested = true">{{ stopRequested ? 'Parando…' : 'Parar' }}</button>
+        </template>
+      </div>
+    </section>
 
     <section class="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-4">
       <div class="flex flex-col gap-1.5 rounded-[20px] bg-card p-3.5">

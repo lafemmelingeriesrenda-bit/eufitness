@@ -3,6 +3,7 @@
 import { z } from 'zod'
 
 export const exercicioSchema = z.object({
+  exercicio_id: z.string().default('').describe('Id do exercício no catálogo da assessoria; vazio se não estiver no catálogo'),
   nome: z.string().describe('Nome do exercício em português, como os alunos conhecem. Ex.: "Supino reto com barra"'),
   series: z.number().int().describe('Número de séries'),
   repeticoes: z.string().describe('Repetições ou tempo. Ex.: "8 a 12", "15", "40 s"'),

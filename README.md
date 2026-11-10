@@ -26,6 +26,14 @@ Telas: `/login`, `/cadastro`, `/convite/[código]`, `/onboarding`, `/personal`, 
 - Aprovar copia o rascunho para a versão publicada. O aluno vê só essa versão, em `/aluno/plano/treino` e `/aluno/plano/dieta`; editar depois não muda nada para ele até aprovar de novo.
 - **Configuração:** na Vercel, em Settings → Environment Variables, crie `DEEPSEEK_API_KEY` com uma chave de https://platform.deepseek.com (API keys) e faça um novo deploy. Opcional: `DEEPSEEK_MODEL=deepseek-v4-pro` para usar o modelo maior. Sem ela, o botão avisa que o agente não está configurado (montar à mão continua funcionando).
 
+## Catálogo de exercícios
+
+- Base global com 876 exercícios do [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (domínio público, Unlicense), com até 2 fotos cada (hospedadas no GitHub do projeto). Fica na tabela `exercises` (`organization_id` vazio).
+- Tradução: no painel **Plataforma**, o dono clica em **Traduzir com o agente**; o DeepSeek traduz nome e instruções com os nomes usados nas academias brasileiras (`/api/admin/catalogo/traduzir`).
+- Em **Exercícios** (menu do personal), a assessoria busca e filtra por músculo e equipamento, liga e desliga exercícios para o agente, dá um nome próprio, cola o link do vídeo do YouTube e cria exercícios próprios (tabela `organization_exercises` e exercícios com `organization_id`).
+- O agente só monta treinos com exercícios ligados que combinem com o local de treino do aluno (academia, casa ou ao ar livre) e devolve o `exercicio_id` de cada um. O servidor descarta ids inventados e padroniza o nome.
+- O aluno vê a foto e o vídeo de cada exercício no treino e no treino em andamento. No editor, o nome do exercício tem sugestões do catálogo.
+
 ## Instruções do agente
 
 - Em **Agente** (menu lateral, ou o botão "Configurar instruções do agente" no painel), cada profissional escreve o próprio jeito de montar planos: o personal para os treinos, a nutricionista para as dietas. Há sugestões prontas para tocar e adicionar.

@@ -53,6 +53,13 @@ const total = computed(() => dia.value?.exercicios.length ?? 0)
 // Começa no primeiro exercício que ainda tem série por fazer.
 const pos = ref(Math.max(0, registro.value.findIndex((ex) => ex.series.some((s) => !s.feita))))
 const ex = computed(() => dia.value?.exercicios[pos.value])
+
+// Fotos e vídeo do exercício atual, quando ele vem do catálogo.
+const { porId } = useExerciciosDoPlano(me.value?.current?.organization_id ?? '', () => dia.value?.exercicios.map((e) => e.exercicio_id ?? '') ?? [])
+const catalogoEx = computed(() => (ex.value?.exercicio_id ? porId.value.get(ex.value.exercicio_id) : undefined))
+const foto = ref(0)
+const verDetalhe = ref(false)
+watch(pos, () => (foto.value = 0))
 const feito = computed(() => registro.value[pos.value])
 const finished = ref(false)
 const summary = ref({ minutos: 0, series: 0, seguidos: 0 })
@@ -188,7 +195,13 @@ const personalFirst = computed(() => data.value?.personal?.split(' ')[0] ?? 'Seu
       </header>
 
       <main class="flex flex-1 flex-col gap-4 px-5 pt-2 pb-6">
-        <section class="flex flex-col gap-3 rounded-[26px] bg-card p-5">
+        <section class="flex flex-col gap-3 overflow-hidden rounded-[26px] bg-card p-5">
+          <div v-if="catalogoEx?.images.length" class="-mx-5 -mt-5 mb-1 flex flex-col bg-white">
+            <img :src="catalogoEx.images[foto % catalogoEx.images.length]" :alt="`${ex.nome}, posição ${(foto % catalogoEx.images.length) + 1}`" class="aspect-[16/10] w-full object-contain" @click="foto++">
+            <div v-if="catalogoEx.images.length > 1" class="flex justify-center gap-1.5 bg-card pt-2">
+              <span v-for="(_, i) in catalogoEx.images" :key="i" class="h-1.5 w-5 rounded-full" :class="foto % catalogoEx.images.length === i ? 'bg-lime' : 'bg-raised'" />
+            </div>
+          </div>
           <span class="chip">{{ dia!.nome }}</span>
           <h1 class="font-display text-[26px] leading-tight font-bold">{{ ex.nome }}</h1>
           <div class="flex flex-wrap gap-2 text-xs font-semibold">
@@ -196,6 +209,7 @@ const personalFirst = computed(() => data.value?.personal?.split(' ')[0] ?? 'Seu
             <span class="rounded-full bg-raised px-2.5 py-1">descanso {{ descanso(ex.descanso_seg) }}</span>
           </div>
           <p v-if="ex.observacao" class="text-sm text-muted"><strong class="text-text">Dica:</strong> {{ ex.observacao }}</p>
+          <button v-if="catalogoEx" type="button" class="btn-ghost self-start" @click="verDetalhe = true">{{ catalogoEx.video_url ? '▶ Ver vídeo' : 'Como fazer' }}</button>
         </section>
 
         <section v-if="remaining > 0" class="flex items-center gap-4 rounded-[22px] border border-violet-line bg-violet-deep p-4" role="timer">
@@ -254,6 +268,7 @@ const personalFirst = computed(() => data.value?.personal?.split(' ')[0] ?? 'Seu
           <AppIcon name="check" /> Concluir treino
         </button>
       </footer>
+      <ExercicioSheet v-if="verDetalhe && catalogoEx" :key="catalogoEx.id" :item="catalogoEx" :org-id="me?.current?.organization_id ?? ''" :can-edit="false" @close="verDetalhe = false" />
     </template>
   </div>
 </template>
