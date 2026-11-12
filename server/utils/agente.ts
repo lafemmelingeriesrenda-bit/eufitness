@@ -1,15 +1,13 @@
 // O agente: monta o rascunho do treino ou da dieta a partir da anamnese.
-// Usa a API do DeepSeek (compatível com a da OpenAI) no modo JSON. O DeepSeek
-// não garante o formato, então o esquema vai no prompt e a resposta é conferida
-// com o zod de shared/utils/planos.ts; se vier errada, pede de novo uma vez.
-import OpenAI from 'openai'
+// Usa o Claude (API da Anthropic) com saída estruturada: a API garante que a
+// resposta segue o esquema zod de shared/utils/planos.ts.
+import Anthropic from '@anthropic-ai/sdk'
+import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { z } from 'zod'
 import type { AnamneseAnswers } from '~~/app/types/database.types'
 import { PROMPT_TREINO } from './prompts/treino'
 
-// deepseek-flash é o modelo indicado pela documentação; dá para trocar por
-// deepseek-v4-pro definindo DEEPSEEK_MODEL na Vercel.
-const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
+const MODEL = 'claude-opus-5-5'
 
 // Treino: o texto completo está em server/utils/prompts/treino.ts.
 const SYSTEM_TREINO = PROMPT_TREINO
@@ -58,11 +56,6 @@ export class AgenteError extends Error {
   }
 }
 
-/** Instruções de formato: o esquema JSON exato que a resposta precisa seguir. */
-function formatoJson(schema: z.ZodType) {
-  return `\n\nResponda APENAS com um objeto json válido, sem texto antes ou depois, que siga exatamente este JSON Schema (todos os campos são obrigatórios; use "" ou [] quando não houver conteúdo):\n${JSON.stringify(z.toJSONSchema(schema))}`
-}
-
 /**
  * Instruções do profissional: o "jeito" dele de montar planos (tela Agente) e,
  * opcionalmente, um pedido só para este aluno. Entram depois das regras base;
@@ -72,81 +65,72 @@ function instrucoesDoProfissional(kind: PlanKind, geral?: string | null, extra?:
   const quem = kind === 'treino' ? 'personal' : 'nutricionista'
   let texto = ''
   if (geral?.trim()) {
-    texto += `\n\nInstruções do ${quem} responsável (siga em todo plano dele):\n"""\n${geral.trim()}\n"""`
+    texto += `Instruções do ${quem} responsável (siga em todo plano dele):\n"""\n${geral.trim()}\n"""\n\n`
   }
   if (extra?.trim()) {
-    texto += `\n\nPedido do ${quem} só para este aluno (tem prioridade sobre as instruções gerais):\n"""\n${extra.trim()}\n"""`
+    texto += `Pedido do ${quem} só para este aluno (tem prioridade sobre as instruções gerais):\n"""\n${extra.trim()}\n"""\n\n`
   }
   if (texto) {
-    texto += `\n\nSe alguma instrução do ${quem} conflitar com a segurança do aluno (dores, lesões, alergias, condições de saúde), priorize a segurança e explique o conflito em alertas_para_profissional.`
+    texto += `Se alguma instrução do ${quem} conflitar com a segurança do aluno (dores, lesões, alergias, condições de saúde), priorize a segurança e explique o conflito em alertas_para_profissional.`
   }
-  return texto
+  return texto.trim()
 }
 
 /**
- * Chama o DeepSeek no modo JSON e confere a resposta com o esquema zod.
- * Se vier vazia, cortada ou fora do formato, mostra o problema e pede de novo uma vez.
+ * Chama o Claude com saída estruturada e devolve o objeto já conferido.
+ * `system` vem em partes: as que se repetem entre pedidos (prompt e catálogo)
+ * ficam em cache por 5 minutos, o que barateia gerações seguidas.
  */
-export async function pedirJson<T>(system: string, user: string, schema: z.ZodType<T>, maxTokens = 8192): Promise<T> {
-  if (!process.env.DEEPSEEK_API_KEY) {
-    throw new AgenteError('O agente ainda não está configurado: falta a variável DEEPSEEK_API_KEY na Vercel.', 503)
+export async function pedirJson<T>(
+  system: { texto: string; cache?: boolean }[],
+  user: string,
+  schema: z.ZodType<T>,
+  opcoes: { maxTokens?: number; effort?: 'low' | 'medium' | 'high' } = {},
+): Promise<T> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new AgenteError('O agente ainda não está configurado: falta a variável ANTHROPIC_API_KEY na Vercel.', 503)
   }
-  const client = new OpenAI({
-    baseURL: 'https://api.deepseek.com',
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    timeout: 240_000,
-    maxRetries: 1,
-  })
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: system + formatoJson(schema) },
-    { role: 'user', content: user },
-  ]
+  const client = new Anthropic({ timeout: 240_000, maxRetries: 1 })
 
   try {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const response = await client.chat.completions.create({
-        model: MODEL,
-        messages,
-        response_format: { type: 'json_object' },
-        max_tokens: maxTokens,
-      })
-      const choice = response.choices[0]
-      const text = choice?.message.content?.trim() ?? ''
+    const response = await client.beta.messages.parse({
+      model: MODEL,
+      max_tokens: opcoes.maxTokens ?? 16000,
+      // Se o Claude recusar o pedido, a própria API tenta com outro modelo.
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: opcoes.effort ?? 'medium', format: betaZodOutputFormat(schema) },
+      system: system
+        .filter((s) => s.texto.trim())
+        .map((s) => ({ type: 'text' as const, text: s.texto, ...(s.cache ? { cache_control: { type: 'ephemeral' as const } } : {}) })),
+      messages: [{ role: 'user', content: user }],
+    })
 
-      let problem: string
-      if (choice?.finish_reason === 'length') {
-        problem = 'A resposta foi cortada por ser longa demais. Seja mais conciso.'
-      } else if (!text) {
-        problem = 'A resposta veio vazia ou não era um json válido.'
-      } else {
-        let json: unknown
-        try {
-          json = JSON.parse(text)
-        } catch {
-          json = undefined
-        }
-        const parsed = schema.safeParse(json)
-        if (parsed.success) return parsed.data
-        problem = json === undefined
-          ? 'A resposta não era um json válido.'
-          : `O json não segue o esquema: ${parsed.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
-        if (text) messages.push({ role: 'assistant', content: text })
-      }
-      messages.push({ role: 'user', content: `${problem} Responda de novo com o json completo e correto.` })
+    if (response.stop_reason === 'refusal') {
+      throw new AgenteError('O agente não conseguiu montar este pedido. Monte à mão ou ajuste os dados e tente de novo.', 422)
     }
-    throw new AgenteError('O agente devolveu a resposta em um formato inesperado. Tente de novo.')
+    if (response.stop_reason === 'max_tokens' || !response.parsed_output) {
+      throw new AgenteError('O agente devolveu uma resposta incompleta. Tente de novo.')
+    }
+    return response.parsed_output as T
   } catch (error) {
     if (error instanceof AgenteError) throw error
-    if (error instanceof OpenAI.AuthenticationError) {
-      throw new AgenteError('A chave da API do DeepSeek é inválida. Confira DEEPSEEK_API_KEY na Vercel.', 503)
+    if (error instanceof Anthropic.AuthenticationError) {
+      throw new AgenteError('A chave da API da Anthropic é inválida. Confira ANTHROPIC_API_KEY na Vercel.', 503)
     }
-    if (error instanceof OpenAI.RateLimitError) {
+    if (error instanceof Anthropic.PermissionDeniedError) {
+      throw new AgenteError('A chave da Anthropic não tem permissão para usar este modelo. Confira a conta em console.anthropic.com.', 503)
+    }
+    if (error instanceof Anthropic.RateLimitError) {
       throw new AgenteError('O agente está com muitos pedidos agora. Espere um minuto e tente de novo.', 429)
     }
-    if (error instanceof OpenAI.APIError) {
-      console.error('Erro na API do DeepSeek', error.status, error.message)
-      // 402 = saldo insuficiente na conta do DeepSeek.
-      if (error.status === 402) throw new AgenteError('A conta do DeepSeek está sem saldo. Recarregue em platform.deepseek.com.', 503)
+    if (error instanceof Anthropic.BadRequestError) {
+      // Ex.: conta sem créditos. A mensagem da API diz o motivo.
+      console.error('Pedido recusado pela API da Anthropic', error.status, error.message)
+      throw new AgenteError('A API da Anthropic recusou o pedido. Confira se a conta tem créditos em console.anthropic.com.', 503)
+    }
+    if (error instanceof Anthropic.APIError) {
+      console.error('Erro na API da Anthropic', error.status, error.message)
       throw new AgenteError('O agente está fora do ar no momento. Tente de novo em alguns minutos.')
     }
     throw error
@@ -178,19 +162,28 @@ Use em "exercicio_id" exatamente o id (o texto antes do primeiro "|") e em "nome
 ${catalogo.map((e) => `${e.id} | ${e.nome} | ${e.categoria} | ${e.equipamento} | ${e.musculos} | ${e.secundarios || '-'} | ${e.nivel}`).join('\n')}`
 }
 
+
 export async function gerarPlano(
   kind: PlanKind,
   anamnese: AnamneseAnswers,
   opcoes: { instrucoes?: string | null; extra?: string | null; catalogo?: ExercicioCatalogo[] } = {},
 ): Promise<PlanContent> {
   const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
-  const system = (kind === 'treino' ? SYSTEM_TREINO : SYSTEM_DIETA)
-    + instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra)
-    + (kind === 'treino' ? catalogoParaAgente(opcoes.catalogo ?? []) : '')
+  // Ordem pensada para o cache: o que muda menos vem primeiro.
+  const system = kind === 'treino'
+    ? [
+        { texto: SYSTEM_TREINO },
+        { texto: catalogoParaAgente(opcoes.catalogo ?? []).trim(), cache: true },
+        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra) },
+      ]
+    : [
+        { texto: SYSTEM_DIETA, cache: true },
+        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra) },
+      ]
   const anamneseJson = JSON.stringify(anamneseParaAgente(anamnese), null, 2)
   const user = kind === 'treino'
     // Operação explícita, como pede a seção "Diretrizes para operações futuras" do prompt.
     ? `OPERAÇÃO: CRIAR_TREINO\n\nAnamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de treino. Escreva todos os textos em português do Brasil.`
     : `Anamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de plano alimentar.`
-  return pedirJson(system, user, schema)
+  return pedirJson(system, user, schema, { effort: 'medium' })
 }
