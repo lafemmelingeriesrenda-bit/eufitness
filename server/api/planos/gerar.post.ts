@@ -1,4 +1,5 @@
-// POST /api/planos/gerar { studentId, kind } → o agente monta o rascunho.
+// POST /api/planos/gerar { studentId, kind, operacao, extra } → o agente monta
+// um rascunho novo (criar) ou ajusta o plano atual conforme o pedido (atualizar).
 // Roda com a sessão de quem chamou: o RLS do Supabase decide o que pode.
 import { z } from 'zod'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
@@ -7,16 +8,18 @@ import type { Database } from '~~/app/types/database.types'
 const bodySchema = z.object({
   studentId: z.string().uuid(),
   kind: z.enum(['treino', 'dieta']),
-  /** Pedido do profissional só para este aluno (opcional). */
+  /** criar = do zero, a partir da anamnese; atualizar = parte do plano atual. */
+  operacao: z.enum(['criar', 'atualizar']).default('criar'),
+  /** Pedido do profissional só para este aluno (obrigatório para atualizar). */
   extra: z.string().max(1000).optional(),
-})
+}).refine((b) => b.operacao === 'criar' || !!b.extra?.trim(), { message: 'Diga o que ajustar' })
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Faça login para continuar' })
 
   const parsed = bodySchema.safeParse(await readBody(event))
-  if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'Pedido inválido' })
+  if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message === 'Diga o que ajustar' ? 'Escreva o que você quer ajustar no plano.' : 'Pedido inválido' })
   const { studentId, kind } = parsed.data
 
   const supabase = await serverSupabaseClient<Database>(event)
@@ -47,9 +50,18 @@ export default defineEventHandler(async (event) => {
   // combinam com o local onde o aluno treina.
   const catalogo = kind === 'treino' ? await carregarCatalogo(supabase, anamnese.organization_id, anamnese.training_place) : []
 
+  // Atualizar: parte do rascunho salvo (que, depois de aprovado, é igual ao que o aluno vê).
+  let atual: PlanContent | undefined
+  if (parsed.data.operacao === 'atualizar') {
+    const { data: plano } = await supabase.from('plans').select('draft, published').eq('student_id', studentId).eq('kind', kind).maybeSingle()
+    const base = (plano?.draft ?? plano?.published) as PlanContent | null | undefined
+    if (!base) throw createError({ statusCode: 400, statusMessage: 'Ainda não há plano para ajustar. Gere um primeiro.' })
+    atual = base
+  }
+
   let draft: PlanContent
   try {
-    draft = await gerarPlano(kind, anamnese, { instrucoes: instr?.instructions, extra: parsed.data.extra, catalogo })
+    draft = await gerarPlano(kind, anamnese, { instrucoes: instr?.instructions, extra: parsed.data.extra, catalogo, atual })
   } catch (error) {
     if (error instanceof AgenteError) throw createError({ statusCode: error.status, statusMessage: error.message })
     throw error

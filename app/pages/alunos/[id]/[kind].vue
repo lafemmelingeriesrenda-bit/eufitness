@@ -46,7 +46,8 @@ const pendingApproval = computed(() => {
 const generating = ref(false)
 /** Pedido só para este aluno, enviado ao agente junto com as instruções gerais. */
 const extra = ref('')
-const regenOpen = ref(false)
+/** O que o agente está fazendo agora (para o texto de espera). */
+const operacao = ref<'criar' | 'atualizar'>('criar')
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -54,20 +55,37 @@ const notice = ref('')
 const firstName = computed(() => data.value?.name.split(' ')[0] || 'o aluno')
 const owner = kind === 'treino' ? 'personal' : 'nutricionista'
 
-async function generate() {
-  regenOpen.value = false
+/**
+ * criar: a IA monta do zero a partir da anamnese.
+ * atualizar: a IA parte do plano atual e muda só o que o pedido diz.
+ */
+async function generate(op: 'criar' | 'atualizar' = 'criar') {
   error.value = ''
   notice.value = ''
+  if (op === 'atualizar') {
+    if (!extra.value.trim()) {
+      error.value = 'Escreva o que a IA deve ajustar.'
+      return
+    }
+    // As edições ainda não salvas também contam: salva antes de pedir o ajuste.
+    if (dirty.value && !(await save())) return
+  } else if (draft.value && !confirm('Montar do zero substitui o rascunho atual, inclusive as suas edições. Continuar?')) {
+    return
+  }
+  operacao.value = op
   generating.value = true
   try {
     const res = await $fetch<{ draft: PlanContent }>('/api/planos/gerar', {
       method: 'POST',
-      body: { studentId, kind, extra: extra.value.trim() || undefined },
+      body: { studentId, kind, operacao: op, extra: extra.value.trim() || undefined },
     })
     draft.value = clone(res.draft)
     saved.value = JSON.stringify(draft.value)
     await refresh()
-    notice.value = 'Rascunho pronto. Revise, ajuste o que precisar e aprove.'
+    extra.value = ''
+    notice.value = op === 'atualizar'
+      ? 'Ajuste pronto. Confira as mudanças e aprove para o aluno receber.'
+      : 'Rascunho pronto. Revise, ajuste o que precisar e aprove.'
   } catch (e: unknown) {
     const err = e as { data?: { statusMessage?: string; message?: string }; statusMessage?: string }
     error.value = err.data?.statusMessage || err.data?.message || err.statusMessage || 'Não deu para gerar agora. Tente de novo.'
@@ -183,7 +201,7 @@ const readOnlyContent = computed(() => (data.value?.plan?.published ?? data.valu
           <template v-if="generating">
             <div class="flex items-center gap-3">
               <div class="size-7 shrink-0 animate-spin rounded-full border-4 border-raised border-t-violet" />
-              <p class="font-display text-lg leading-tight font-semibold">Montando o {{ kind === 'treino' ? 'treino' : 'plano alimentar' }} de {{ firstName }}…</p>
+              <p class="font-display text-lg leading-tight font-semibold">{{ operacao === 'atualizar' ? 'Ajustando' : 'Montando' }} o {{ kind === 'treino' ? 'treino' : 'plano alimentar' }} de {{ firstName }}…</p>
             </div>
             <p class="text-sm text-muted">Leva de 30 segundos a 2 minutos. Não feche esta tela.</p>
           </template>
@@ -197,7 +215,7 @@ const readOnlyContent = computed(() => (data.value?.plan?.published ?? data.valu
               <textarea id="extra" v-model="extra" rows="2" maxlength="1000" class="field h-auto bg-ink py-3" :placeholder="kind === 'treino' ? 'Ex.: foco em glúteos; ela só tem 40 minutos às terças' : 'Ex.: almoça no restaurante da empresa durante a semana'" />
               <NuxtLink to="/agente" class="text-xs text-violet-soft underline-offset-4 hover:underline">O agente também segue as suas instruções gerais. Editar →</NuxtLink>
             </div>
-            <button type="button" class="btn-primary" @click="generate">
+            <button type="button" class="btn-primary" @click="generate('criar')">
               <AppIcon name="sparkle" /> Gerar rascunho
             </button>
             <button type="button" class="self-center py-1 text-sm text-muted underline-offset-4 hover:underline" @click="startBlank">
@@ -217,19 +235,36 @@ const readOnlyContent = computed(() => (data.value?.plan?.published ?? data.valu
             <span v-if="pendingApproval" class="rounded-full bg-[rgba(255,138,61,0.16)] px-2.5 py-1 font-semibold text-[#FFB98A]">
               {{ data.plan?.published_at ? 'Alterações ainda não enviadas' : 'Ainda não enviado ao aluno' }}
             </span>
-            <button v-if="data.anamneseSent" type="button" class="ml-auto flex items-center gap-1 font-semibold text-violet-soft" :aria-expanded="regenOpen" @click="regenOpen = !regenOpen">
-              <AppIcon name="sparkle" :size="14" /> Gerar de novo
-            </button>
           </div>
 
-          <section v-if="regenOpen" class="flex flex-col gap-2.5 rounded-[20px] border border-violet-line bg-violet-deep p-4">
-            <label for="extra-regen" class="text-sm font-semibold">O que mudar nesta versão? <span class="font-normal text-faint">(opcional)</span></label>
-            <textarea id="extra-regen" v-model="extra" rows="2" maxlength="1000" class="field h-auto bg-ink py-3" placeholder="Ex.: menos exercícios por dia; trocar agachamento livre por leg press" />
-            <p class="text-xs text-muted">O novo rascunho substitui o atual, inclusive as suas edições.</p>
-            <div class="flex gap-2">
-              <button type="button" class="btn-primary h-12 flex-1 text-[15px]" @click="generate"><AppIcon name="sparkle" :size="18" /> Gerar nova versão</button>
-              <button type="button" class="btn-ghost h-12 px-4" @click="regenOpen = false">Cancelar</button>
+          <section v-if="data.anamneseSent" class="flex flex-col gap-3 rounded-[22px] border border-violet-line bg-violet-deep p-4">
+            <span class="flex items-center gap-1.5 text-xs font-bold tracking-[.08em] text-violet-soft uppercase">
+              <AppIcon name="sparkle" :size="14" /> Pedir à IA
+            </span>
+            <label for="pedido-ia" class="text-sm font-semibold">
+              O que a IA deve ajustar {{ kind === 'treino' ? 'neste treino' : 'nesta dieta' }}?
+            </label>
+            <textarea
+              id="pedido-ia"
+              v-model="extra"
+              rows="3"
+              maxlength="1000"
+              class="field h-auto bg-ink py-3"
+              :placeholder="kind === 'treino'
+                ? 'Ex.: está sentindo dor no ombro, tirar exercícios acima da cabeça; aumentar o volume de glúteos; reduzir para 45 minutos'
+                : 'Ex.: trocar o lanche da tarde por algo prático para levar; aumentar a proteína do café da manhã'"
+            />
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button type="button" class="btn-primary h-12 text-[15px] sm:w-auto sm:px-6" :disabled="!extra.trim()" @click="generate('atualizar')">
+                <AppIcon name="sparkle" :size="18" /> Ajustar {{ kind === 'treino' ? 'este treino' : 'esta dieta' }}
+              </button>
+              <button type="button" class="btn-ghost h-12 justify-center px-4" @click="generate('criar')">Montar do zero</button>
             </div>
+            <p class="text-xs leading-relaxed text-muted">
+              <strong class="text-text">Ajustar:</strong> a IA parte {{ kind === 'treino' ? 'do treino atual' : 'da dieta atual' }} e muda só o que você pediu.
+              <strong class="text-text">Montar do zero:</strong> ignora o que existe e cria outro a partir da anamnese (o pedido, se houver, também vale).
+              Em ambos, {{ firstName }} só recebe depois que você aprovar.
+            </p>
           </section>
 
           <section v-if="draft.alertas_para_profissional.length" class="flex gap-3 rounded-[20px] border border-[rgba(255,138,61,0.35)] bg-[rgba(255,138,61,0.08)] p-4">
