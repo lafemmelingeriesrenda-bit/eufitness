@@ -166,7 +166,13 @@ ${catalogo.map((e) => `${e.id} | ${e.nome} | ${e.categoria} | ${e.equipamento} |
 export async function gerarPlano(
   kind: PlanKind,
   anamnese: AnamneseAnswers,
-  opcoes: { instrucoes?: string | null; extra?: string | null; catalogo?: ExercicioCatalogo[] } = {},
+  opcoes: {
+    instrucoes?: string | null
+    extra?: string | null
+    catalogo?: ExercicioCatalogo[]
+    /** Plano atual: quando vem, a operação é ATUALIZAR (ajustar), não CRIAR. */
+    atual?: PlanContent
+  } = {},
 ): Promise<PlanContent> {
   const schema: z.ZodType<PlanContent> = kind === 'treino' ? treinoSchema : dietaSchema
   // Ordem pensada para o cache: o que muda menos vem primeiro.
@@ -174,16 +180,38 @@ export async function gerarPlano(
     ? [
         { texto: SYSTEM_TREINO },
         { texto: catalogoParaAgente(opcoes.catalogo ?? []).trim(), cache: true },
-        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra) },
+        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.atual ? null : opcoes.extra) },
       ]
     : [
         { texto: SYSTEM_DIETA, cache: true },
-        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.extra) },
+        { texto: instrucoesDoProfissional(kind, opcoes.instrucoes, opcoes.atual ? null : opcoes.extra) },
       ]
   const anamneseJson = JSON.stringify(anamneseParaAgente(anamnese), null, 2)
-  const user = kind === 'treino'
-    // Operação explícita, como pede a seção "Diretrizes para operações futuras" do prompt.
-    ? `OPERAÇÃO: CRIAR_TREINO\n\nAnamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de treino. Escreva todos os textos em português do Brasil.`
-    : `Anamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de plano alimentar.`
+  const nomePlano = kind === 'treino' ? 'treino' : 'plano alimentar'
+
+  let user: string
+  if (opcoes.atual) {
+    // Os avisos antigos saem: o agente escreve avisos novos para esta versão.
+    const atual = { ...opcoes.atual, alertas_para_profissional: [] }
+    user = `OPERAÇÃO: ${kind === 'treino' ? 'ATUALIZAR_TREINO' : 'ATUALIZAR_PLANO_ALIMENTAR'}
+
+${kind === 'treino' ? 'Treino' : 'Plano alimentar'} atual do aluno (json):
+${JSON.stringify(atual, null, 2)}
+
+Pedido do ${kind === 'treino' ? 'personal' : 'nutricionista'} para esta atualização:
+"""
+${opcoes.extra?.trim() ?? ''}
+"""
+
+Anamnese do aluno (json):
+${anamneseJson}
+
+Ajuste o ${nomePlano} atual conforme o pedido. Preserve tudo o que continua adequado e modifique somente o que for necessário para atender ao pedido; não recomece o planejamento. Devolva o ${nomePlano} completo, já com as mudanças. No início do "resumo", diga em uma frase o que mudou nesta versão. Escreva todos os textos em português do Brasil.`
+  } else {
+    user = kind === 'treino'
+      // Operação explícita, como pede a seção "Diretrizes para operações futuras" do prompt.
+      ? `OPERAÇÃO: CRIAR_TREINO\n\nAnamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de treino. Escreva todos os textos em português do Brasil.`
+      : `Anamnese do aluno (json):\n${anamneseJson}\n\nMonte o rascunho de plano alimentar.`
+  }
   return pedirJson(system, user, schema, { effort: 'medium' })
 }
