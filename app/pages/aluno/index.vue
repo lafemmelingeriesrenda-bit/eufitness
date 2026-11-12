@@ -41,6 +41,24 @@ const { data: plans } = await useAsyncData('aluno-planos', async () => {
   return data ?? []
 })
 const hasPlan = (k: PlanKind) => (plans.value ?? []).some((p) => p.kind === k)
+
+// Próximo treino: o dia seguinte ao último concluído (A → B → C → A…), ou um
+// treino começado e não terminado nas últimas 12 h.
+const { data: ultimoLog } = await useAsyncData('aluno-ultimo-treino', async () => {
+  const { data } = await supabase
+    .from('workout_logs').select('day_index, finished_at, started_at')
+    .eq('student_id', user.value!.sub).order('started_at', { ascending: false }).limit(1).maybeSingle()
+  return data
+})
+const proximoTreino = computed(() => {
+  const treino = (plans.value ?? []).find((p) => p.kind === 'treino')?.content as unknown as Treino | undefined
+  if (!treino?.dias.length) return null
+  const log = ultimoLog.value
+  const emAndamento = !!log && !log.finished_at && Date.now() - new Date(log.started_at).getTime() < 12 * 3600_000
+  const indice = !log ? 0 : emAndamento ? log.day_index : (log.day_index + 1) % treino.dias.length
+  const dia = treino.dias[indice] ?? treino.dias[0]!
+  return { indice, dia, emAndamento, minutos: estimarMinutos(dia) }
+})
 const route = useRoute()
 const justSent = computed(() => route.query.anamnese === 'enviada')
 
@@ -84,7 +102,23 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       {{ anamnese && anamnese.step > 1 ? `Continuar do passo ${anamnese.step}` : 'Responder anamnese' }}
       <AppIcon name="arrow" />
     </NuxtLink>
-    <section v-else class="grid grid-cols-2 gap-2.5 lg:col-start-1 lg:gap-4">
+
+    <NuxtLink
+      v-if="anamnese?.submitted_at && proximoTreino"
+      :to="`/aluno/treino/${proximoTreino.indice}`"
+      class="flex items-center gap-4 rounded-[26px] bg-lime p-5 text-ink lg:col-start-1"
+    >
+      <div class="flex min-w-0 flex-1 flex-col gap-1">
+        <span class="text-xs font-bold tracking-[.08em] uppercase">{{ proximoTreino.emAndamento ? 'Continuar treino' : 'Próximo treino' }}</span>
+        <span class="truncate font-display text-[22px] leading-tight font-bold">{{ proximoTreino.dia.nome }}</span>
+        <span class="truncate text-sm font-semibold opacity-80">
+          {{ proximoTreino.dia.foco || `${proximoTreino.dia.exercicios.length} exercícios` }} · ~{{ proximoTreino.minutos }} min
+        </span>
+      </div>
+      <span class="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink text-lime"><AppIcon name="play" :size="26" /></span>
+    </NuxtLink>
+
+    <section v-if="anamnese?.submitted_at" class="grid grid-cols-2 gap-2.5 lg:col-start-1 lg:gap-4">
       <NuxtLink
         v-for="k in (['treino', 'dieta'] as const)"
         :key="k"

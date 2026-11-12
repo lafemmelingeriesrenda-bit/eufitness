@@ -1,6 +1,9 @@
 <!-- Ícones de traço simples usados nas telas. -->
 <script setup lang="ts">
-defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell' | 'back' | 'alert' | 'edit' | 'shield'; size?: number }>()
+type IconName =
+  | 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'check' | 'whatsapp' | 'sparkle' | 'leaf' | 'dumbbell'
+  | 'back' | 'alert' | 'edit' | 'shield' | 'minus' | 'play' | 'info' | 'list' | 'clock' | 'flame' | 'x' | 'trophy'
+defineProps<{ name: IconName; size?: number }>()
 </script>
 
 <template>
@@ -28,5 +31,19 @@ defineProps<{ name: 'arrow' | 'plus' | 'users' | 'user' | 'logout' | 'copy' | 'c
     </template>
     <path v-else-if="name === 'edit'" d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
     <path v-else-if="name === 'shield'" d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3zM9 12l2 2 4-4" />
+    <path v-else-if="name === 'minus'" d="M5 12h14" />
+    <path v-else-if="name === 'play'" d="M8 5.5v13l11-6.5-11-6.5z" />
+    <template v-else-if="name === 'info'">
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" />
+    </template>
+    <path v-else-if="name === 'list'" d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+    <template v-else-if="name === 'clock'">
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+    </template>
+    <path v-else-if="name === 'flame'" d="M12 21c4 0 7-2.8 7-6.8 0-3.6-2.6-6.2-4.4-8.7-.4 2-1.5 3.3-2.8 3.9C12 6.6 10.6 4.4 8.6 3c.2 3.4-3.6 6.3-3.6 11.2C5 18.2 8 21 12 21z" />
+    <path v-else-if="name === 'x'" d="M6 6l12 12M18 6L6 18" />
+    <template v-else-if="name === 'trophy'">
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4M12 13v4M8.5 20h7" />
+    </template>
   </svg>
 </template>

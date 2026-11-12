@@ -16,7 +16,7 @@ const { data } = await useAsyncData(`ficha-${studentId}`, async () => {
     supabase.from('profiles').select('full_name, phone').eq('id', studentId).maybeSingle(),
     supabase.from('anamneses').select('*').eq('student_id', studentId).maybeSingle(),
     supabase.from('plans').select('kind, draft_by_agent, draft_updated_at, published_at').eq('student_id', studentId),
-    supabase.from('workout_logs').select('id, day_name, exercises, started_at, finished_at')
+    supabase.from('workout_logs').select('id, day_name, exercises, started_at, finished_at, feeling')
       .eq('student_id', studentId).not('finished_at', 'is', null)
       .order('started_at', { ascending: false }).limit(8),
   ])
@@ -33,6 +33,7 @@ const treinosFeitos = computed(() => (data.value?.logs ?? []).map((l) => {
     minutos: Math.max(1, Math.round((new Date(l.finished_at!).getTime() - new Date(l.started_at).getTime()) / 60000)),
     series: seriesFeitas(reg),
     volume: volumeKg(reg),
+    sentimento: l.feeling,
   }
 }))
 
@@ -179,6 +180,17 @@ const sections = computed(() => {
             <div class="flex min-w-0 flex-col gap-0.5">
               <span class="truncate text-sm font-semibold">{{ t.dia }}</span>
               <span class="text-xs text-muted first-letter:uppercase">{{ t.data }} · {{ t.minutos }} min</span>
+              <span
+                v-if="t.sentimento"
+                class="self-start rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                :class="{
+                  'bg-[rgba(198,244,50,0.14)] text-lime': t.sentimento === 'na_medida',
+                  'bg-raised text-muted': t.sentimento === 'leve',
+                  'bg-[rgba(255,138,61,0.16)] text-[#FFB98A]': t.sentimento === 'pesado',
+                }"
+              >
+                {{ { leve: 'Achou leve', na_medida: 'Na medida', pesado: 'Achou pesado' }[t.sentimento] }}
+              </span>
             </div>
             <span class="shrink-0 text-right text-xs text-muted">
               {{ t.series }} séries<template v-if="t.volume"><br>{{ t.volume.toLocaleString('pt-BR') }} kg</template>

@@ -7,6 +7,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type MemberRole = 'personal' | 'nutri' | 'aluno'
 export type LinkStatus = 'ativo' | 'pausado' | 'encerrado'
 export type PlanKindDb = 'treino' | 'dieta'
+export type Sentimento = 'leve' | 'na_medida' | 'pesado'
 
 /** O que o painel /admin recebe de admin_overview(). */
 export type AdminOverview = {
@@ -248,6 +249,7 @@ export type Database = {
           exercises: Json
           started_at: string
           finished_at: string | null
+          feeling: Sentimento | null
         }
         Insert: {
           student_id: string
@@ -260,6 +262,7 @@ export type Database = {
         Update: {
           exercises?: Json
           finished_at?: string | null
+          feeling?: Sentimento | null
         }
         Relationships: []
       }
