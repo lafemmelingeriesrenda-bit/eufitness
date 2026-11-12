@@ -43,10 +43,10 @@ export default defineEventHandler(async (event) => {
   let resposta: z.infer<typeof respostaSchema>
   try {
     resposta = await pedirJson(
-      SYSTEM,
+      [{ texto: SYSTEM, cache: true }],
       `Traduza estes exercícios (json):\n${JSON.stringify(rows.map((r) => ({ id: r.id, nome: r.name_en, instrucoes: r.instructions_en })))}`,
       respostaSchema,
-      8000,
+      { maxTokens: 16000, effort: 'low' },
     )
   } catch (e) {
     if (e instanceof AgenteError) throw createError({ statusCode: e.status, statusMessage: e.message })
